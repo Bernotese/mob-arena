@@ -47,7 +47,7 @@ public final class RandomizerLootHook {
     }
 
     public static boolean allowed(Item item) {
-        return item != Items.AIR && item != Items.BEDROCK && !(item instanceof GameMasterBlockItem)
+        return item != Items.COMMAND_BLOCK_MINECART && item != Items.AIR && item != Items.BEDROCK && !(item instanceof GameMasterBlockItem)
                 && item != Items.STRUCTURE_VOID && item != Items.DEBUG_STICK && item != Items.BARRIER && item != Items.LIGHT;
     }
 }
