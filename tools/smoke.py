@@ -128,7 +128,10 @@ def run_scenario(rcon, log, process, *, spike=False, portal_only=False):
     wait_log(log, r'blue1 joined the game', process, timeout=90)
     cmd('ma team assign red1 red', 'Player assigned to RED')
     cmd('ma team assign blue1 blue', 'Player assigned to BLUE')
-    cmd('ma start', 'Game started')
+    offset = len(log.read_text())
+    cmd('ma start', 'Preparing the game worlds')
+    # The worlds load over several ticks; PREP starts when they are ready.
+    wait_log(log, r'Game started', process, timeout=90, offset=offset)
     offset = len(log.read_text())
     cmd('ma status', 'Phase: PREP')
     process.stdin.write(b'ma status\n')

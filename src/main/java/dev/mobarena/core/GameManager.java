@@ -20,6 +20,9 @@ public final class GameManager {
         public void teamFinished(TeamId team, long timeTicks) {}
         public void teamEliminated(TeamId team, TeamProgress progress) {}
     };
+    private StartPreparer preparer = StartPreparer.NONE;
+    public StartPreparer preparer() { return preparer; }
+    public void setPreparer(StartPreparer preparer) { this.preparer = Objects.requireNonNull(preparer); }
     public void setResultHooksFactory(Function<GameContext, ResultHooks> factory) { resultHooks = Objects.requireNonNull(factory); }
     private void notifyListeners(String event, Consumer<PhaseListener> call) {
         for (PhaseListener listener : List.copyOf(listeners)) {
@@ -33,9 +36,18 @@ public final class GameManager {
     public GameContext context() { return context; }
     public void setConfigSource(Supplier<MobArenaConfig> source) { config = source; }
     public boolean start(MinecraftServer server, Map<UUID, TeamId> teams, Set<UUID> online) {
+        return start(server, teams, online, new Random().nextLong());
+    }
+    /** True in the lobby when each team has an online player. */
+    public boolean canStart(Map<UUID, TeamId> teams, Set<UUID> online) {
         if (phase != Phase.LOBBY || context != null || transitioning) return false;
         for (TeamId team : TeamId.values()) if (online.stream().noneMatch(id -> teams.get(id) == team)) return false;
-        context = new GameContext(server, new Random().nextLong(), teams, config.get());
+        return true;
+    }
+    /** Start with a known seed, for example for worlds that were prepared before. */
+    public boolean start(MinecraftServer server, Map<UUID, TeamId> teams, Set<UUID> online, long seed) {
+        if (!canStart(teams, online)) return false;
+        context = new GameContext(server, seed, teams, config.get());
         context.put(ResultHooks.KEY, Objects.requireNonNull(resultHooks.apply(context)));
         transition(Phase.PREP); return true;
     }
