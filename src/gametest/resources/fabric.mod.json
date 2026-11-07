@@ -22,7 +22,8 @@
       "dev.mobarena.gametest.FullGameTest",
       "dev.mobarena.gametest.FullGameStopTest",
       "dev.mobarena.arena.DebugDriverGameTest",
-      "dev.mobarena.gametest.ResultGameTest"
+      "dev.mobarena.gametest.ResultGameTest",
+      "dev.mobarena.gametest.FullResultTest"
     ]
   },
   "depends": {
