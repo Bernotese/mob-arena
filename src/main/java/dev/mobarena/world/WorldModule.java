@@ -46,6 +46,9 @@ public final class WorldModule {
         GameManager.get().register(new ArenaWorldManager());
         GameManager.get().register(WorldCleanup.INSTANCE);
         ServerLifecycleEvents.SERVER_STARTING.register(WorldCleanup::removeCrashLeftovers);
+        WorldPreparer.init();
+        GameManager.get().setPreparer(WorldPreparer.INSTANCE);
+        ServerLifecycleEvents.SERVER_STOPPING.register(WorldPreparer.INSTANCE::cancel);
         ServerLifecycleEvents.SERVER_STOPPING.register(WorldCleanup::clean);
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(WorldCleanup::sweep);
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents.UNLOAD.register(WorldCleanup::onUnload);

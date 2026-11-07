@@ -10,20 +10,39 @@ import net.minecraft.world.level.levelgen.Heightmap;
 
 public final class TeamSpawnFinder {
     private TeamSpawnFinder() {}
+    /** Search rings 0..MAX_RADIUS of chunks around the generator origin. */
+    public static final int MAX_RADIUS = 5;
+
+    /** Blocking search: loads chunks on demand. */
     public static BlockPos find(ServerLevel level) {
-        ChunkPos origin = level.getChunkSource().getGenerator().getOrigin(level.getChunkSource().randomState());
-        for (int radius = 0; radius <= 5; radius++) {
-            for (int dx = -radius; dx <= radius; dx++) for (int dz = -radius; dz <= radius; dz++) {
-                if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
-                var chunk = new ChunkPos(origin.x() + dx, origin.z() + dz);
-                for (int x = chunk.getMinBlockX(); x <= chunk.getMaxBlockX(); x++) {
-                    for (int z = chunk.getMinBlockZ(); z <= chunk.getMaxBlockZ(); z++) {
-                        var spawn = safeColumn(level, x, z);
-                        if (spawn != null) return spawn;
-                    }
+        ChunkPos origin = origin(level);
+        for (int radius = 0; radius <= MAX_RADIUS; radius++) {
+            var spawn = searchRing(level, origin, radius);
+            if (spawn != null) return spawn;
+        }
+        return fallback(level, origin);
+    }
+
+    public static ChunkPos origin(ServerLevel level) {
+        return level.getChunkSource().getGenerator().getOrigin(level.getChunkSource().randomState());
+    }
+
+    /** One ring of the search; the async start loads the ring's chunks first, so this does not block. */
+    public static BlockPos searchRing(ServerLevel level, ChunkPos origin, int radius) {
+        for (int dx = -radius; dx <= radius; dx++) for (int dz = -radius; dz <= radius; dz++) {
+            if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
+            var chunk = new ChunkPos(origin.x() + dx, origin.z() + dz);
+            for (int x = chunk.getMinBlockX(); x <= chunk.getMaxBlockX(); x++) {
+                for (int z = chunk.getMinBlockZ(); z <= chunk.getMaxBlockZ(); z++) {
+                    var spawn = safeColumn(level, x, z);
+                    if (spawn != null) return spawn;
                 }
             }
         }
+        return null;
+    }
+
+    public static BlockPos fallback(ServerLevel level, ChunkPos origin) {
         var pos = origin.getWorldPosition();
         return fallback(level, pos.getX(), pos.getZ());
     }
