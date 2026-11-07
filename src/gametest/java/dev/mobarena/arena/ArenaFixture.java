@@ -28,8 +28,8 @@ final class ArenaFixture implements AutoCloseable {
     ArenaFixture(GameTestHelper h, boolean withMate, boolean enterArena, boolean realResults) {
         this.h = h;
         TestEnd.stopStaleGame();
-        red = TestPlayers.create(h); blue = TestPlayers.create(h);
-        mate = withMate ? TestPlayers.create(h) : null;
+        red = player(h); blue = player(h);
+        mate = withMate ? player(h) : null;
         var teams = new HashMap<UUID, TeamId>();
         teams.put(red.getUUID(), TeamId.RED); teams.put(blue.getUUID(), TeamId.BLUE);
         if (mate != null) teams.put(mate.getUUID(), TeamId.RED);
@@ -41,6 +41,15 @@ final class ArenaFixture implements AutoCloseable {
         });
         TestEnd.run(h, this::close);
         if (enterArena) { game.endPhaseNow(); game.endPhaseNow(); }
+    }
+
+    /** Chat (system) messages per fixture player UUID. */
+    final Map<UUID, List<String>> chat = new HashMap<>();
+    private ServerPlayer player(GameTestHelper h) {
+        var messages = new ArrayList<String>();
+        var player = TestPlayers.recording(h, messages);
+        chat.put(player.getUUID(), messages);
+        return player;
     }
 
     ArenaBattles group() { return ArenaBattles.get(ctx); }

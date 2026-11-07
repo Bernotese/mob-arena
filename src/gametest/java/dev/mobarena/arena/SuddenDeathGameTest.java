@@ -98,13 +98,44 @@ public class SuddenDeathGameTest {
     @GameTest(environment = "mobarena:arena_sd_empty", maxTicks = 800, skyAccess = true)
     public void teamWithoutMobsWinsAfterCountdown(GameTestHelper h) {
         var f = fixture(h, List.of(Map.of(), Map.of(), Map.of()), List.of(Map.of(ZOMBIE, 2), Map.of(), Map.of()));
+        var server = h.getLevel().getServer();
+        long[] sdTick = {-1};
         h.startSequence()
             .thenExecute(() -> equalEliminations(f))
             .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.SUDDEN_DEATH, "SUDDEN_DEATH"))
-            .thenExecute(() -> h.assertTrue(f.group().battle(TeamId.RED).state() != BattleFlow.State.FINISHED,
-                    "RED is not finished before the countdown"))
-            .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.END, "Game ends after the countdown"))
-            .thenExecute(() -> h.assertValueEqual(result(f), "RED / Sudden death: All waves cleared", "Result"))
+            .thenExecute(() -> {
+                sdTick[0] = server.getTickCount();
+                h.assertTrue(f.ctx.config().waveCountdownSeconds() > 0, "Test needs a countdown above 0");
+                var state = f.group().battle(TeamId.RED).state();
+                h.assertTrue(state == BattleFlow.State.WAITING_ARENA || state == BattleFlow.State.COUNTDOWN,
+                        "RED is in the countdown at the sudden death start, state " + state);
+            })
+            .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.END, "Game ends"))
+            .thenExecute(() -> {
+                // SUDDEN_DEATH starts at the end of tick sdTick - 1; the countdown runs from tick sdTick on.
+                long countdown = f.ctx.config().waveCountdownSeconds() * 20L;
+                long elapsed = server.getTickCount() - sdTick[0];
+                h.assertTrue(elapsed >= countdown - 1, "END only after the countdown: " + elapsed + " < " + countdown);
+                h.assertValueEqual(result(f), "RED / Sudden death: All waves cleared", "Result");
+            })
+            .thenSucceed();
+    }
+
+    /** The start message goes to the team players, not to lobby players. */
+    @GameTest(environment = "mobarena:arena_sd_message", maxTicks = 400, skyAccess = true)
+    public void startMessageOnlyForTeamPlayers(GameTestHelper h) {
+        var f = fixture(h, List.of(Map.of(ZOMBIE, 1), Map.of(), Map.of()), List.of(Map.of(ZOMBIE, 1), Map.of(), Map.of()));
+        List<String> lobby = new ArrayList<>(), red = f.chat.get(f.red.getUUID());
+        var lobbyPlayer = dev.mobarena.gametest.TestPlayers.recording(h, lobby);
+        var server = h.getLevel().getServer();
+        dev.mobarena.gametest.TestEnd.run(h, () -> server.getPlayerList().remove(lobbyPlayer));
+        h.startSequence()
+            .thenExecute(() -> equalEliminations(f))
+            .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.SUDDEN_DEATH, "SUDDEN_DEATH"))
+            .thenExecute(() -> {
+                h.assertTrue(red.stream().anyMatch(m -> m.startsWith("Sudden death!")), "Team player gets the start message: " + red);
+                h.assertTrue(lobby.stream().noneMatch(m -> m.startsWith("Sudden death!")), "Lobby player gets no start message: " + lobby);
+            })
             .thenSucceed();
     }
 
