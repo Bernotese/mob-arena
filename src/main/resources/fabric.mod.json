@@ -15,6 +15,7 @@
   "mixins": [
     "mobarena.mixins.json",
     "mobarena.randomizer.mixins.json",
+    "mobarena.world.mixins.json",
     "mobarena.backpack.mixins.json"
   ],
   "depends": {

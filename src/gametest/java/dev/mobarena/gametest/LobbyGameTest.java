@@ -53,7 +53,8 @@ public class LobbyGameTest {
         LobbyManager lobby = new LobbyManager(path);
         try {
             start(red, blue); var ctx = GameManager.get().context();
-            red.teleportTo(red.getX() + 40, 140, red.getZ() + 40); lobby.setSpawn(red);
+            red.teleportTo(server.overworld(), red.getX() + 40, 140, red.getZ() + 40,
+                    Set.of(), red.getYRot(), red.getXRot(), true); lobby.setSpawn(red);
             double holdingX = red.getX(); lobby.leave(red); // PREP return must also be discarded.
             GameManager.get().endPhaseNow(); lobby.onEnter(Phase.WAVE_CONFIG, ctx); lobby.leave(red);
             GameManager.get().endPhaseNow(); lobby.onEnter(Phase.ARENA, ctx);
