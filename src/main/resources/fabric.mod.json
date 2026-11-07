@@ -13,7 +13,8 @@
 		]
 	},
 	"mixins": [
-		"mobarena.mixins.json"
+		"mobarena.mixins.json",
+		"mobarena.backpack.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.20.1",

@@ -11,5 +11,6 @@ public final class MobArena implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		LOGGER.info("Mob Arena loaded");
+		dev.mobarena.backpack.BackpackModule.init();
 	}
 }
