@@ -27,7 +27,7 @@ import net.minecraft.world.level.storage.LevelResource;
 import java.nio.file.Files;
 import java.util.*;
 
-/** T10 scenarios that need T8 results (S1, S4, S6). Each test has its own environment. */
+/** T10 scenarios that need T8 results (S1–S4, S6). Each test has its own environment. */
 public class FullResultTest {
     /** S1: 1v1, real kills in PREP, BLUE down in wave 2, RED clears all waves and wins. */
     @GameTest(environment = "mobarena:full_happy_path", maxTicks = 1500)
@@ -50,7 +50,7 @@ public class FullResultTest {
             h.startSequence().thenWaitUntil(f::arenaReady)
                 .thenExecute(f.check(() -> {
                     keys.addAll(levelKeys(f));
-                    h.assertTrue(keys.size() >= 4, "Both teams have game levels: " + keys.size());
+                    h.assertTrue(keys.size() == 8, "Each team has 4 game levels: " + keys.size());
                     f.red.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 3));
                 }))
                 .thenWaitUntil(() -> { waveUp(h, f, TeamId.RED, 1, 1); waveUp(h, f, TeamId.BLUE, 1, 1); })
@@ -144,6 +144,101 @@ public class FullResultTest {
                     var result = f.ctx.get(ResultKeys.RESULT);
                     h.assertTrue(result.winner().equals(Optional.of(TeamId.RED)) && result.reason().equals("More progress"),
                             "RED wins on progress: " + result);
+                }))
+                .thenExecute(f::close).thenSucceed();
+        } catch (RuntimeException | Error e) { f.close(); throw e; }
+    }
+
+    /** S2: both teams finish (time is no tie breaker) -> real sudden death (tag 4) -> RED clears first and wins. */
+    @GameTest(environment = "mobarena:full_sd_first_clear", maxTicks = 1500)
+    public void bothFinishThenRedClearsSuddenDeathFirst(GameTestHelper h) {
+        var f = new FullGameFixture(h, true, 1);
+        try {
+            for (var team : TeamId.values()) DebugDriver.poolAdd(team, "cow", 3);
+            f.waveConfig();
+            for (var team : TeamId.values()) DebugDriver.waves(team, "cow:1", "cow:1", "cow:1");
+            f.admin("ma skip");
+            var seq = h.startSequence().thenWaitUntil(f::arenaReady);
+            for (int wave = 1; wave <= 3; wave++) {
+                int w = wave;
+                seq = seq.thenWaitUntil(() -> { waveUp(h, f, TeamId.RED, w, 1); waveUp(h, f, TeamId.BLUE, w, 1); })
+                        .thenExecute(f.check(() -> { f.admin("ma debug clearwave red"); f.admin("ma debug clearwave blue"); }));
+            }
+            String sdRed = WaveTags.tag(TeamId.RED, WaveTags.SUDDEN_DEATH_WAVE), sdBlue = WaveTags.tag(TeamId.BLUE, WaveTags.SUDDEN_DEATH_WAVE);
+            seq.thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.SUDDEN_DEATH, "Two finishes start sudden death, phase " + f.game.phase()))
+                .thenExecute(f.check(() -> {
+                    h.assertTrue(f.ctx.get(ResultKeys.RESULT) == null, "No result before sudden death ends");
+                    h.assertTrue(tracker(f).arenaOutcome(TeamId.RED) instanceof Outcome.Finished
+                            && tracker(f).arenaOutcome(TeamId.BLUE) instanceof Outcome.Finished, "Both arena outcomes FINISHED");
+                    var verdict = DebugDriver.state(f.server).getAsJsonObject("verdict");
+                    h.assertTrue(verdict.get("type").getAsString().equals("SUDDEN_DEATH"), "State verdict: " + verdict);
+                }))
+                .thenWaitUntil(() -> {
+                    var red = battle(h, f, TeamId.RED);
+                    h.assertTrue(sdRed.equals(red.currentTag()) && red.waveMobs().size() == 3, "RED fights all 3 BLUE waves at once with tag 4");
+                    var blue = battle(h, f, TeamId.BLUE);
+                    h.assertTrue(sdBlue.equals(blue.currentTag()) && blue.waveMobs().size() == 3, "BLUE fights all 3 RED waves at once with tag 4");
+                })
+                .thenExecute(f.check(() -> f.admin("ma debug clearwave red")))
+                .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.END, "First clear ends sudden death"))
+                .thenExecute(f.check(() -> {
+                    var result = f.ctx.get(ResultKeys.RESULT);
+                    h.assertTrue(result.winner().equals(Optional.of(TeamId.RED)) && result.reason().equals("Sudden death: All waves cleared"),
+                            "RED wins sudden death: " + result);
+                    h.assertTrue(tracker(f).suddenDeathOutcome(TeamId.RED).orElseThrow() instanceof Outcome.Finished, "RED sudden death FINISHED");
+                }))
+                .thenExecute(f::close).thenSucceed();
+        } catch (RuntimeException | Error e) { f.close(); throw e; }
+    }
+
+    /** S3: both eliminated with equal progress -> sudden death -> both time out with equal kills -> draw. */
+    @GameTest(environment = "mobarena:full_sd_draw", maxTicks = 2200)
+    public void equalEliminationsThenEqualSuddenDeathKillsIsDraw(GameTestHelper h) {
+        var f = new FullGameFixture(h, true, 1);
+        try {
+            for (var team : TeamId.values()) DebugDriver.poolAdd(team, "cow", 3);
+            f.waveConfig();
+            for (var team : TeamId.values()) DebugDriver.waves(team, "cow:1", "cow:1", "cow:1");
+            f.admin("ma skip");
+            long sdMax = f.ctx.config().suddenDeathMaxTimeSeconds() * 20L;
+            ArenaBattle[] sd = new ArenaBattle[2];
+            h.startSequence().thenWaitUntil(f::arenaReady)
+                .thenWaitUntil(() -> { waveUp(h, f, TeamId.RED, 1, 1); waveUp(h, f, TeamId.BLUE, 1, 1); })
+                .thenExecute(f.check(() -> { f.down(f.red); f.down(f.blue); }))
+                .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.SUDDEN_DEATH, "Equal eliminations start sudden death, phase " + f.game.phase()))
+                .thenExecute(f.check(() -> {
+                    for (var p : f.teamPlayers()) {
+                        var team = f.ctx.team(p.getUUID());
+                        h.assertTrue(!p.isSpectator() && p.level() == f.ctx.arenaLevel(team) && p.getHealth() == p.getMaxHealth(),
+                                "Down player is alive in the own arena again: " + team);
+                    }
+                }))
+                .thenWaitUntil(() -> {
+                    for (var team : TeamId.values()) {
+                        var battle = battle(h, f, team);
+                        h.assertTrue(battle.state() == BattleFlow.State.FIGHT && battle.waveMobs().size() == 3, team + " fights 3 mobs");
+                    }
+                })
+                .thenExecute(f.check(() -> {
+                    for (var team : TeamId.values()) {
+                        var battle = battle(h, f, team);
+                        sd[team.ordinal()] = battle;
+                        var cow = battle.waveMobs().getFirst();
+                        cow.hurtServer((ServerLevel) cow.level(), cow.damageSources().genericKill(), Float.MAX_VALUE);
+                    }
+                }))
+                .thenWaitUntil(() -> h.assertTrue(sd[0].kills() == 1 && sd[1].kills() == 1, "One kill per team"))
+                .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.END, "Both teams time out"))
+                .thenExecute(f.check(() -> {
+                    for (var battle : sd) h.assertTrue(battle.eliminationReason().orElseThrow() == BattleEvent.Reason.TIME, battle.team() + " reason TIME");
+                    var result = f.ctx.get(ResultKeys.RESULT);
+                    h.assertTrue(result.winner().isEmpty() && result.reason().equals("Sudden death: equal result"), "Draw: " + result);
+                    for (var team : TeamId.values()) {
+                        var outcome = (Outcome.Eliminated) tracker(f).suddenDeathOutcome(team).orElseThrow();
+                        h.assertTrue(outcome.progress().killsInCurrentWave() == 1 && outcome.progress().ticks() >= sdMax,
+                                team + " sudden death progress: " + outcome.progress());
+                    }
+                    h.assertTrue(HudOverrides.of(f.ctx).result().text().getString().equals("Draw"), "HUD shows Draw");
                 }))
                 .thenExecute(f::close).thenSucceed();
         } catch (RuntimeException | Error e) { f.close(); throw e; }
