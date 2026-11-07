@@ -24,7 +24,7 @@ Use these versions (from `gradle.properties`):
 2. Put the Fabric API jar and `mob-arena-0.1.0.jar` in `mods/`.
 3. Start the server one time. Accept the EULA in `eula.txt`. Start the server again.
 4. Make your test account an operator: `op <name>` in the server console.
-5. Install the same Minecraft version and Fabric on the client. The client does not need the mod.
+5. Use a normal Minecraft 26.3 client. The client does not need Fabric or the mod.
 
 ## 3. Short times for a test
 Send these commands as an operator in the lobby. The values apply at the next phase.
