@@ -41,8 +41,11 @@ public class BackpackLifecycleGameTest {
             helper.assertTrue(BackpackModule.open(red), "WAVE_CONFIG allows backpack access");
             helper.assertTrue(storage.inventory(TeamId.RED).getItem(1).getCount() == 7, "Wave configuration keeps team storage");
             game.endPhaseNow(); helper.assertTrue(BackpackModule.open(red), "ARENA allows backpack access");
-            game.enterSuddenDeath(); helper.assertTrue(!BackpackModule.open(red), "SUDDEN_DEATH has no backpack access");
-            helper.assertTrue(red.containerMenu == red.inventoryMenu, "Disallowed phases close existing backpack viewers");
+            game.enterSuddenDeath();
+            helper.assertTrue(red.containerMenu instanceof ChestMenu, "SUDDEN_DEATH keeps existing backpack viewers");
+            helper.assertTrue(BackpackModule.open(red), "SUDDEN_DEATH allows backpack access");
+            game.finish(); helper.assertTrue(!BackpackModule.open(red), "END has no backpack access");
+            helper.assertTrue(red.containerMenu == red.inventoryMenu, "END closes existing backpack viewers");
             game.stop();
             helper.assertTrue(storage.inventory(TeamId.RED).isEmpty() && backpacks(red) == 0 && backpacks(blue) == 0, "LOBBY clears storage and backpack items");
             helper.assertTrue(red.containerMenu == red.inventoryMenu, "Game stop closes the shared menu");

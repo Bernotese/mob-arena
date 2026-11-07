@@ -33,7 +33,7 @@ public final class BackpackModule {
     public static void useGameAccess() {
         setAccess(player -> {
             GameManager game = GameManager.get();
-            if (game.context() == null || (game.phase() != Phase.PREP && game.phase() != Phase.WAVE_CONFIG && game.phase() != Phase.ARENA)) return null;
+            if (game.context() == null || (game.phase() != Phase.PREP && game.phase() != Phase.WAVE_CONFIG && game.phase() != Phase.ARENA && game.phase() != Phase.SUDDEN_DEATH)) return null;
             return game.context().team(player.getUUID());
         });
     }
@@ -43,7 +43,7 @@ public final class BackpackModule {
         GameManager.get().register(new PhaseListener() {
             @Override public void onEnter(Phase phase, GameContext ctx) {
                 if (phase == Phase.PREP || phase == Phase.LOBBY) TeamBackpack.get(ctx.server()).clear(ctx.server());
-                if (phase == Phase.SUDDEN_DEATH || phase == Phase.END) TeamBackpack.get(ctx.server()).closeViewers(ctx.server());
+                if (phase == Phase.END) TeamBackpack.get(ctx.server()).closeViewers(ctx.server());
                 if (phase == Phase.PREP) ctx.server().getPlayerList().getPlayers().forEach(GuardedItems::restore);
             }
         });

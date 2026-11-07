@@ -6,6 +6,6 @@ import net.minecraft.server.level.ServerPlayer;
 /** T2 supplies team membership and phase access on the server thread. */
 @FunctionalInterface
 public interface BackpackAccess {
-    /** Return the team, or null outside PREP, WAVE_CONFIG and ARENA. */
+    /** Return the team, or null outside PREP, WAVE_CONFIG, ARENA and SUDDEN_DEATH. */
     TeamId activeTeam(ServerPlayer player);
 }
