@@ -71,7 +71,7 @@ public final class BossBarHud implements PhaseListener {
             case END -> "End";
             case LOBBY -> "Lobby";
         };
-        if (phase == Phase.END && !neutralViewer) return HudOverrides.of(ctx).result();
+        if (phase == Phase.END) return HudOverrides.of(ctx).result();
         if (remaining >= 0) name += " – " + TimeFormat.mmss(remaining);
         if (phase == Phase.WAVE_CONFIG && !neutralViewer) name += " – " + HudOverrides.of(ctx).readyText();
         BossBarColor color = switch (phase) {

@@ -11,10 +11,9 @@ import static net.minecraft.commands.Commands.*;
 /** Server-thread owner of all open admin menus. */
 public final class ConfigGuiHub {
     private final ConfigStore store;
-    private final ConfigBounds bounds;
     private final Set<ConfigGui> menus = new HashSet<>();
     private MobArenaConfig.Snapshot rendered;
-    public ConfigGuiHub(ConfigStore store, ConfigBounds bounds) { this.store = store; this.bounds = bounds; }
+    public ConfigGuiHub(ConfigStore store) { this.store = store; }
     public static boolean admin(ServerPlayer player) {
         return hasPermission(LEVEL_GAMEMASTERS).test(player.createCommandSourceStack());
     }
@@ -28,7 +27,7 @@ public final class ConfigGuiHub {
         return null;
     }
     MobArenaConfig current() { return store.current(); }
-    ConfigBounds.Range bounds(String key) { return bounds.bounds(key); }
+    dev.mobarena.config.ConfigBounds.Bounds bounds(String key) { return store.bounds(key); }
     void set(String key, String value) throws IOException { store.set(key, value); renderAll(); }
     void reset() throws IOException { store.reset(); renderAll(); }
     void removed(ConfigGui gui) { menus.remove(gui); }

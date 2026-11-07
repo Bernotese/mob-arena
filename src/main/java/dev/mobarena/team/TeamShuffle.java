@@ -6,7 +6,8 @@ public final class TeamShuffle {
         List<T> shuffled = new ArrayList<>(new LinkedHashSet<>(players));
         Collections.shuffle(shuffled, random);
         Map<T, TeamId> result = new LinkedHashMap<>();
-        for (int i = 0; i < shuffled.size(); i++) result.put(shuffled.get(i), i % 2 == 0 ? TeamId.RED : TeamId.BLUE);
+        boolean redFirst = random.nextBoolean();
+        for (int i = 0; i < shuffled.size(); i++) result.put(shuffled.get(i), (i % 2 == 0) == redFirst ? TeamId.RED : TeamId.BLUE);
         return result;
     }
 }

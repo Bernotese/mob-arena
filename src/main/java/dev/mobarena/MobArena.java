@@ -30,6 +30,8 @@ public final class MobArena implements ModInitializer {
         GameManager.get().setConfigSource(config::snapshot);
         // Register the lobby first. Module listeners run after inventory cleanup.
         GameManager.get().register(lobby);
+        // Modules: one init line each (PLAN 2.2). They run after the lobby listener.
+        dev.mobarena.randomizer.RandomizerModule.init();
         CoreCommands.register(config, lobby);
         dev.mobarena.hud.HudModule.init(config);
         CommandRegistry.initialize();

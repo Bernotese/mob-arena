@@ -12,8 +12,8 @@ public class CoreGameTest {
     public void commandsStartAndHoldingAreaProtectsPlayers(GameTestHelper helper) throws Exception {
         var server = helper.getLevel().getServer();
         GameManager game = GameManager.get(); game.stop();
-        ServerPlayer red = helper.makeMockServerPlayerInLevel();
-        ServerPlayer blue = helper.makeMockServerPlayerInLevel();
+        ServerPlayer red = TestPlayers.create(helper);
+        ServerPlayer blue = TestPlayers.create(helper);
         try {
             TeamManager.get().assign(red, TeamId.RED); TeamManager.get().assign(blue, TeamId.BLUE);
             var dispatcher = server.getCommands().getDispatcher();

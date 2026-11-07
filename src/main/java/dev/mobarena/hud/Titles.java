@@ -11,7 +11,7 @@ public final class Titles {
     public static void show(ServerPlayer player, Component title, Component subtitle,
                             int fadeIn, int stay, int fadeOut) {
         player.connection.send(new ClientboundSetTitlesAnimationPacket(fadeIn, stay, fadeOut));
-        player.connection.send(new ClientboundSetSubtitleTextPacket(subtitle));
+        player.connection.send(new ClientboundSetSubtitleTextPacket(subtitle == null ? Component.empty() : subtitle));
         player.connection.send(new ClientboundSetTitleTextPacket(title));
     }
     public static void showAll(Iterable<ServerPlayer> players, Component title, Component subtitle,

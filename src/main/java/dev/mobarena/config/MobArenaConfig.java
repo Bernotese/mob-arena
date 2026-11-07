@@ -34,7 +34,11 @@ public final class MobArenaConfig {
     public static MobArenaConfig load(Path path) throws IOException {
         if (!Files.exists(path)) { MobArenaConfig c = new MobArenaConfig(); c.save(path); return c; }
         try (Reader reader = Files.newBufferedReader(path)) {
-            MobArenaConfig c = GSON.fromJson(reader, MobArenaConfig.class);
+            JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
+            Set<String> known = new HashSet<>();
+            for (var field : MobArenaConfig.class.getFields()) known.add(field.getName());
+            for (String key : json.keySet()) if (!known.contains(key)) dev.mobarena.MobArena.LOGGER.warn("Unknown config key: {}", key);
+            MobArenaConfig c = GSON.fromJson(json, MobArenaConfig.class);
             if (c == null) throw new IllegalArgumentException("Empty config");
             c.validate(); return c;
         }
@@ -47,7 +51,7 @@ public final class MobArenaConfig {
     }
     public void validate() {
         for (var field : getClass().getFields()) try {
-            if (field.getType() == int.class && field.getInt(this) < 1) throw new IllegalArgumentException(field.getName() + " must be positive");
+            if (field.getType() == int.class) ConfigBounds.bounds(field.getName()).validate(field.getName(), field.getInt(this));
         } catch (IllegalAccessException e) { throw new IllegalStateException(e); }
         if (arenaTemplate == null || !arenaTemplate.matches("[a-zA-Z0-9_-]+")) throw new IllegalArgumentException("Invalid arena template");
         if (mobBlacklist == null || mobBlacklist.stream().anyMatch(s -> s == null || !s.matches("([a-z0-9_.-]+:)?[a-z0-9_./-]+"))) throw new IllegalArgumentException("Invalid mob blacklist");

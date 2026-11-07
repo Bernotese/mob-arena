@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 import java.util.function.Function;
 import java.util.function.Consumer;
 import dev.mobarena.MobArena;
-/** Server thread only. Listeners run in registration order. Nested calls queue only the last transition. */
+/** Server thread only. Listeners run in registration order. Nested calls keep the last transition, but LOBBY has priority. */
 public final class GameManager {
     private static final GameManager INSTANCE = new GameManager();
     private final List<PhaseListener> listeners = new ArrayList<>();
@@ -67,9 +67,9 @@ public final class GameManager {
     public void stop() { if (context != null) transition(Phase.LOBBY); }
     public void enterSuddenDeath() { if (phase == Phase.ARENA) transition(Phase.SUDDEN_DEATH); }
     public void finish() { if (context != null && phase != Phase.END) transition(Phase.END); }
-    /** Nested calls queue only the last requested transition. */
+    /** Nested calls keep the last request, but a queued LOBBY cannot be replaced. */
     private void transition(Phase next) {
-        if (transitioning) { pending = next; return; }
+        if (transitioning) { if (pending != Phase.LOBBY) pending = next; return; }
         if (context == null) return;
         MobArenaConfig.Snapshot nextConfig = config.get().snapshot();
         transitioning = true;

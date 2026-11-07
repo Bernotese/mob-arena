@@ -83,6 +83,8 @@ public class HudGameTest {
             f.hud.onEnter(Phase.END,f.ctx);f.checkTeams(h);
             h.assertTrue(f.hud.bar(TeamId.RED).getName().getString().equals("Team BLUE wins"),"Winner text");
             h.assertTrue(f.hud.bar(TeamId.RED).getColor()==BossBarColor.BLUE,"Winner color");
+            h.assertTrue(f.hud.bar(null).getName().getString().equals("Team BLUE wins"),"Neutral viewer sees winner");
+            Titles.show(f.red,Component.literal("Winner"),null,0,20,0);
             h.assertTrue(f.hud.bar(TeamId.RED).getProgress()==1,"End bar is full");
             HudOverrides.of(f.ctx).setResult(null);f.hud.update(Phase.END,f.ctx);
             h.assertTrue(f.hud.bar(TeamId.RED).getName().getString().equals("Draw"),"Draw text");
@@ -97,6 +99,32 @@ public class HudGameTest {
                 h.assertTrue(f.hud.bar(team).getPlayers().isEmpty(),"Lobby viewers cleared");
             }
             h.assertTrue(!f.hud.bar(null).isVisible(),"Neutral lobby bar hidden");
+        }h.succeed();
+    }
+    @GameTest public void joinDuringGameUsesNeutralBar(GameTestHelper h) {
+        try(var f=new Fixture(h)) {
+            f.ctx.timer().reset(54000);f.hud.onEnter(Phase.PREP,f.ctx);
+            var joined=h.makeMockServerPlayerInLevel();
+            try {
+                joined.setGameMode(net.minecraft.world.level.GameType.SPECTATOR);
+                f.hud.add(joined,Phase.PREP,f.ctx);
+                h.assertTrue(f.hud.bar(null).getPlayers().contains(joined),"Joined spectator sees neutral bar");
+                for(var team:TeamId.values())
+                    h.assertTrue(!f.hud.bar(team).getPlayers().contains(joined),"Joined spectator sees no team bar");
+            } finally { f.hud.remove(joined);f.ctx.server().getPlayerList().remove(joined); }
+        }h.succeed();
+    }
+    @GameTest public void joinLobbyAfterGameHasNoBar(GameTestHelper h) {
+        try(var f=new Fixture(h)) {
+            f.ctx.timer().reset(54000);f.hud.onEnter(Phase.PREP,f.ctx);
+            f.hud.onEnter(Phase.LOBBY,f.ctx);
+            var joined=h.makeMockServerPlayerInLevel();
+            try {
+                f.hud.add(joined,Phase.LOBBY,null);
+                h.assertTrue(f.hud.bar(null).getPlayers().isEmpty(),"Lobby join has no neutral bar");
+                for(var team:TeamId.values())
+                    h.assertTrue(f.hud.bar(team).getPlayers().isEmpty(),"Lobby join has no team bar");
+            } finally { f.ctx.server().getPlayerList().remove(joined); }
         }h.succeed();
     }
 }

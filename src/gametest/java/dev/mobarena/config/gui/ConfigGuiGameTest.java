@@ -25,7 +25,7 @@ public class ConfigGuiGameTest {
     @GameTest public void configSetResetAndSync(GameTestHelper h) throws Exception {
         Path file=Files.createTempFile("mobarena-gui-", ".json");Files.delete(file);
         var store=new ConfigStore(file);
-        var hub=new ConfigGuiHub(store,ConfigBounds.spec());
+        var hub=new ConfigGuiHub(store);
         var a=h.makeMockServerPlayerInLevel();var b=h.makeMockServerPlayerInLevel();
         try {
             op(h,a);op(h,b);
@@ -60,20 +60,20 @@ public class ConfigGuiGameTest {
     @GameTest public void configValidationError(GameTestHelper h) throws Exception {
         Path file=Files.createTempFile("mobarena-gui-", ".json");Files.delete(file);
         var store=new ConfigStore(file);
-        // Exercise the same click/save failure path without bypassing ConfigStore validation.
-        var hub=new ConfigGuiHub(store,key->new ConfigBounds.Range(0,0));
+        // Exercise a save failure while retaining valid numeric bounds.
+        var hub=new ConfigGuiHub(store);
         var p=h.makeMockServerPlayerInLevel();
         try {
-            op(h,p);var gui=hub.open(p);click(gui,0,ClickType.MOUSE_RIGHT);
+            op(h,p);var gui=hub.open(p);Files.delete(file);Files.createDirectory(file);Files.writeString(file.resolve("keep"),"keep");click(gui,0,ClickType.MOUSE_RIGHT);
             h.assertTrue(gui.error()!=null,"Validation error is visible");
             h.assertTrue(store.current().prepTimeSeconds==2700,"Validation keeps old value");
-            h.assertTrue(MobArenaConfig.load(file).prepTimeSeconds==2700,"Validation keeps file unchanged");
-        } finally {hub.closeAll();cleanup(h,p);Files.deleteIfExists(file);}
+            h.assertTrue(Files.isDirectory(file),"Save failure keeps the existing path");
+        } finally {hub.closeAll();cleanup(h,p);if(Files.isDirectory(file)) Files.deleteIfExists(file.resolve("keep"));Files.deleteIfExists(file);}
         h.succeed();
     }
     @GameTest public void configPermissions(GameTestHelper h) throws Exception {
         Path file=Files.createTempFile("mobarena-gui-", ".json");Files.delete(file);
-        var store=new ConfigStore(file);var hub=new ConfigGuiHub(store,ConfigBounds.spec());
+        var store=new ConfigStore(file);var hub=new ConfigGuiHub(store);
         var p=h.makeMockServerPlayerInLevel();
         try {
             h.assertTrue(hub.open(p)==null,"Non-admin cannot open menu");
@@ -82,7 +82,7 @@ public class ConfigGuiGameTest {
             click(gui,0,ClickType.MOUSE_LEFT);
             h.assertTrue(store.current().prepTimeSeconds==2700,"Permission loss blocks click");
             h.assertTrue(!gui.isOpen(),"Permission loss closes menu");
-        } finally {hub.closeAll();cleanup(h,p);Files.deleteIfExists(file);}
+        } finally {hub.closeAll();cleanup(h,p);if(Files.isDirectory(file)) Files.deleteIfExists(file.resolve("keep"));Files.deleteIfExists(file);}
         h.succeed();
     }
     @GameTest public void configCommand(GameTestHelper h) throws Exception {

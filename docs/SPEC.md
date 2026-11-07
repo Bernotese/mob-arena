@@ -46,7 +46,7 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - At game start, the mod makes one item map per team: `Map<Item, Item>`. Map RED and map BLUE are different. Both are new each game.
 - The map is not balanced. Any item can map to any item (for example `oak_log` -> `iron_ingot`).
 - Pool: all items in the item registry, minus `air`, items that need operator permission (command blocks, structure blocks, jigsaw, debug stick, barrier, light), and `bedrock`. Spawn eggs are in the pool.
-- The map applies to **all items that drop** in the team worlds (overworld and Nether):
+- The map applies to **all items that drop** in all team prep worlds (overworld, Nether and End):
   - Block drops, mob drops (loot and equipment), chest loot, fishing, shearing, piglin bartering, and all other loot tables.
   - The world tells the team, not the player. Thus explosions and other non-player breaks also use the team map.
 - Exceptions (not randomized):
@@ -58,7 +58,9 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 ## 5. Team backpack
 - At the start of `PREP`, each player gets one team backpack. The item is a vanilla `bundle` with a custom name, a custom data tag `mobarena:team_backpack`, and **no** `bundle_contents` component (so the vanilla bundle logic does not run).
 - Right click (use) opens a 27-slot chest menu (`generic_9x3`). This inventory is shared by all players of the team. Changes show live to all viewers.
-- The team inventory stays in server memory and in the game save data. It is not lost on death.
+- The team inventory stays in server memory only (not saved to disk, because a server stop cancels the game). It is not lost on death.
+- Right click on a block or an entity with the backpack opens the backpack. It never puts the backpack into an item frame, an armor stand, a pot, a shelf or an allay.
+- The backpack cannot go into a bundle or a shulker box item.
 - The player cannot drop the backpack, put it in a container, or put it into the backpack. If the backpack is missing (for example after a bug), the mod gives a new one.
 - The backpack works in `PREP`, `WAVE_CONFIG` and `ARENA`. At game end, the mod clears it.
 
@@ -99,10 +101,12 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - Children of wave mobs (slime splits, and similar) get the same tag. They must also die.
 - Mobs that leave the arena bounds teleport back to a spawn point.
 - After 60 s in a wave (`mobGlowAfterSeconds`), all remaining wave mobs get the glowing effect.
+- Max 150 wave mobs are alive at the same time (`maxAliveMobs`). The other mobs wait in a queue and spawn when mobs die. **[DEFAULT]**
+- Players cannot use spawn eggs in the arena.
 - Fish do not count (section 3.1), so they never spawn. Other water mobs (squid, dolphin, guardian, axolotl, and others) spawn in a water basin of the arena. If the arena has no basin, they spawn in a 1-block water source at the spawn point. **[DEFAULT]**
 
 ### 7.4 Wave time limit
-- Each wave has a max time: 5 min (`waveMaxTimeSeconds = 300`).
+- Each wave has a max time: 15 min (`waveMaxTimeSeconds = 900`).
 - If the time ends before the wave is cleared, the team is **eliminated** at this wave. **[DEFAULT]**
 
 ### 7.5 Death and respawn
@@ -111,8 +115,12 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - A team with 1 player is eliminated when this player dies.
 - Disconnected players count as dead for this rule. **[DEFAULT]**
 
+### 7.6 Finished and eliminated teams
+- A finished team stays in its arena in survival mode until the end.
+- Players of an eliminated team become spectators and teleport to the arena of the other team to watch. **[DEFAULT]**
+
 ## 8. Win rules
-Progress of a team = (highest cleared wave, then number of killed mobs in the current wave, then time).
+Progress of a team = (highest cleared wave, then number of killed mobs in the current wave). Time is never a tie breaker.
 1. If one team finishes all 3 waves and the other team is eliminated: the finished team wins.
 2. If one team is eliminated, the other team continues. If it finishes, it wins. If it is also eliminated, the team with more progress wins.
 3. If both teams are eliminated with equal progress (wave and kills): sudden death. **[DEFAULT]**
@@ -153,17 +161,18 @@ Root: `/mobarena`, alias `/ma`.
 - File: `config/mob-arena.json`. In-game changes save to this file at once.
 - Changes during a running game apply from the next phase. **[DEFAULT]**
 
-| Key | Type | Default |
-|---|---|---|
-| `prepTimeSeconds` | int | 2700 |
-| `waveConfigTimeSeconds` | int | 180 |
-| `waveCountdownSeconds` | int | 10 |
-| `waveCooldownSeconds` | int | 20 |
-| `waveMaxTimeSeconds` | int | 300 |
-| `suddenDeathMaxTimeSeconds` | int | 600 |
-| `arenaRespawnSeconds` | int | 10 |
-| `mobGlowAfterSeconds` | int | 60 |
-| `endScreenSeconds` | int | 15 |
-| `randomizerEnabled` | bool | true |
-| `mobBlacklist` | list of entity ids | `ender_dragon, player, armor_stand, cod, salmon, tropical_fish, pufferfish` |
-| `arenaTemplate` | string | `default` |
+| Key | Type | Default | Range |
+|---|---|---|---|
+| `prepTimeSeconds` | int | 2700 | 60–14400 |
+| `waveConfigTimeSeconds` | int | 180 | 10–1800 |
+| `waveCountdownSeconds` | int | 10 | 3–60 |
+| `waveCooldownSeconds` | int | 20 | 1–300 |
+| `waveMaxTimeSeconds` | int | 900 | 60–3600 |
+| `suddenDeathMaxTimeSeconds` | int | 600 | 60–3600 |
+| `arenaRespawnSeconds` | int | 10 | 1–120 |
+| `mobGlowAfterSeconds` | int | 60 | 1–900 |
+| `maxAliveMobs` | int | 150 | 10–500 |
+| `endScreenSeconds` | int | 15 | 5–120 |
+| `randomizerEnabled` | bool | true | – |
+| `mobBlacklist` | list of entity ids | `ender_dragon, player, armor_stand, cod, salmon, tropical_fish, pufferfish` | – |
+| `arenaTemplate` | string | `default` | – |
