@@ -11,6 +11,15 @@ public interface BattleListener {
     void eliminated(TeamId team, TeamProgress progress);
     default void kill(TeamId team, int killsInWave) {}
 
+    /** Sudden death: report straight to the given hooks (the ResultTracker). */
+    static BattleListener of(ResultHooks hooks) {
+        java.util.Objects.requireNonNull(hooks);
+        return new BattleListener() {
+            @Override public void finished(TeamId team, long ticks) { hooks.teamFinished(team, ticks); }
+            @Override public void eliminated(TeamId team, TeamProgress progress) { hooks.teamEliminated(team, progress); }
+        };
+    }
+
     static BattleListener resultHooks(GameContext ctx) {
         return new BattleListener() {
             @Override public void finished(TeamId team, long ticks) { hooks(ctx).teamFinished(team, ticks); }
