@@ -62,7 +62,7 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - Right click on a block or an entity with the backpack opens the backpack. It never puts the backpack into an item frame, an armor stand, a pot, a shelf or an allay.
 - The backpack cannot go into a bundle or a shulker box item.
 - The player cannot drop the backpack, put it in a container, or put it into the backpack. If the backpack is missing (for example after a bug), the mod gives a new one.
-- The backpack works in `PREP`, `WAVE_CONFIG` and `ARENA`. At game end, the mod clears it.
+- The backpack works in `PREP`, `WAVE_CONFIG`, `ARENA` and `SUDDEN_DEATH`. At game end, the mod clears it.
 
 ## 6. Wave configuration (`WAVE_CONFIG`)
 - Default duration: 3 min (`waveConfigTimeSeconds = 180`). All players are in a safe holding area (or stay in place, frozen and invulnerable). **[DEFAULT: holding area in the lobby world]**
