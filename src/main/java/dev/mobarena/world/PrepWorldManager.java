@@ -15,12 +15,16 @@ public final class PrepWorldManager implements PhaseListener {
         Map<TeamId, TeamWorlds> teams = new EnumMap<>(TeamId.class);
         ctx.put(TeamWorlds.KEY, teams);
         try {
+            net.minecraft.core.BlockPos spawnColumn = null;
             for (TeamId team : TeamId.values()) {
                 var overworld = LevelFactory.open(ctx.server(), ctx.seed(), team, WorldKind.PREP_OVERWORLD);
                 var nether = LevelFactory.open(ctx.server(), ctx.seed(), team, WorldKind.PREP_NETHER);
                 var end = LevelFactory.open(ctx.server(), ctx.seed(), team, WorldKind.PREP_END);
                 long started = System.nanoTime();
-                var spawn = TeamSpawnFinder.find(overworld.asLevel());
+                // Vanilla decorations can differ with worker order. Share the column, then check each level's clearance.
+                var spawn = spawnColumn == null ? TeamSpawnFinder.find(overworld.asLevel())
+                        : TeamSpawnFinder.atColumn(overworld.asLevel(), spawnColumn);
+                spawnColumn = spawn;
                 MobArena.LOGGER.info("Found {} prep spawn in {} ms", team, (System.nanoTime() - started) / 1_000_000);
                 overworld.asLevel().getChunk(spawn.getX() >> 4, spawn.getZ() >> 4);
                 teams.put(team, new TeamWorlds(overworld, nether, end, null, spawn, null));

@@ -35,10 +35,10 @@ public class WorldGameTest {
         helper.succeed();
     }
 
-    @GameTest(maxTicks = 1600, skyAccess = true)
+    @GameTest(environment = "mobarena:world_lifecycle", maxTicks = 1600, skyAccess = true)
     public void w1PrepAndW11Cleanup(GameTestHelper helper) {
         var server = helper.getLevel().getServer();
-        // Other module tests are synchronous. Start this lifecycle test after their initial tick.
+        // This environment keeps global world generation settings separate from other module tests.
         helper.runAfterDelay(2, () -> {
             var settings = new WorldTestSettings(server);
             helper.runBeforeTestEnd(settings::close);
@@ -54,17 +54,14 @@ public class WorldGameTest {
             helper.assertValueEqual(worlds.size(), 2, "Two teams");
             var red = worlds.get(TeamId.RED);
             var blue = worlds.get(TeamId.BLUE);
-            helper.assertValueEqual(red.prepSpawn(), blue.prepSpawn(), "Same seed gives same spawn");
+            helper.assertValueEqual(red.prepSpawn().getX(), blue.prepSpawn().getX(), "Same spawn X");
+            helper.assertValueEqual(red.prepSpawn().getZ(), blue.prepSpawn().getZ(), "Same spawn Z");
+            NoiseWorldChecks.verify(helper, red.overworld().asLevel(), blue.overworld().asLevel());
+            for (var world : worlds.values()) NoiseWorldChecks.safeSpawn(helper, world.overworld().asLevel(), world.prepSpawn());
             for (var team : worlds.values()) team.handles().forEach(h -> {
                 helper.assertTrue(h.asLevel().getGameRules().get(GameRules.KEEP_INVENTORY), "Every prep level keeps inventory");
                 helper.assertValueEqual(h.asLevel().getSeed(), ctx.seed(), "Game seed");
             });
-            for (int x : new int[]{-16, 0, 16}) {
-                int z = 8;
-                for (int y : new int[]{0, 63, 80}) helper.assertValueEqual(
-                        red.overworld().asLevel().getBlockState(new net.minecraft.core.BlockPos(x, y, z)),
-                        blue.overworld().asLevel().getBlockState(new net.minecraft.core.BlockPos(x, y, z)), "Equal terrain");
-            }
             var players = PortalWorldChecks.verify(helper, ctx, redPlayer, bluePlayer);
             rejoin(helper, ctx, players[0]);
             mappedBlockDrop(helper, ctx);
@@ -126,5 +123,66 @@ public class WorldGameTest {
         } catch (java.io.IOException e) { throw new IllegalStateException(e); }
         finally { if (file != null) try { java.nio.file.Files.deleteIfExists(file); }
             catch (java.io.IOException e) { throw new IllegalStateException(e); } }
+    }
+    @GameTest(environment = "mobarena:world_generation")
+    public void w1SeedZeroAndSpawnClearance(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        // This environment can also clean levels left by a failed lifecycle test.
+        WorldCleanup.clean(server);
+        try (var settings = new WorldTestSettings(server)) {
+            var red = LevelFactory.open(server, 0, TeamId.RED, WorldKind.PREP_OVERWORLD);
+            var blue = LevelFactory.open(server, 0, TeamId.BLUE, WorldKind.PREP_OVERWORLD);
+            try {
+                NoiseWorldChecks.verify(helper, red.asLevel(), blue.asLevel());
+                var column = TeamSpawnFinder.find(red.asLevel());
+                var spawn = TeamSpawnFinder.atColumn(blue.asLevel(), column);
+                helper.assertValueEqual(spawn.getX(), column.getX(), "Seed zero shares spawn X");
+                helper.assertValueEqual(spawn.getZ(), column.getZ(), "Seed zero shares spawn Z");
+                NoiseWorldChecks.safeSpawn(helper, red.asLevel(), column);
+                NoiseWorldChecks.safeSpawn(helper, blue.asLevel(), spawn);
+                // Decorations can differ. Force a trunk and a leaf above the shared column.
+                var trunk = spawn.above(2);
+                blue.asLevel().setBlockAndUpdate(trunk, net.minecraft.world.level.block.Blocks.OAK_LOG.defaultBlockState());
+                blue.asLevel().setBlockAndUpdate(trunk.above(2), net.minecraft.world.level.block.Blocks.OAK_LEAVES.defaultBlockState());
+                var raised = TeamSpawnFinder.atColumn(blue.asLevel(), column);
+                helper.assertValueEqual(raised.getX(), column.getX(), "Trunk keeps shared X");
+                helper.assertValueEqual(raised.getZ(), column.getZ(), "Trunk keeps shared Z");
+                helper.assertTrue(raised.getY() > trunk.getY() + 2, "Spawn clears trunk and head obstruction");
+                NoiseWorldChecks.safeSpawn(helper, blue.asLevel(), raised);
+            } finally {
+                // This test owns its environment, so no other test uses the tracked levels.
+                WorldCleanup.clean(server);
+            }
+        }
+        helper.succeed();
+    }
+    @GameTest(environment = "mobarena:world_fallback")
+    public void w1WaterSpawnFallback(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var handles = new java.util.ArrayList<xyz.nucleoid.fantasy.RuntimeLevelHandle>();
+        try {
+            for (var team : TeamId.values()) {
+                var config = LevelFactory.config(server, 0, WorldKind.PREP_OVERWORLD)
+                        .setGenerator(new xyz.nucleoid.fantasy.util.VoidChunkGenerator(server));
+                handles.add(xyz.nucleoid.fantasy.Fantasy.get(server).openTemporaryLevel(
+                        net.minecraft.resources.Identifier.fromNamespaceAndPath("mobarena", "water_fallback_" + team.name().toLowerCase(java.util.Locale.ROOT)), config));
+            }
+            var red = handles.get(0).asLevel();
+            var blue = handles.get(1).asLevel();
+            // The empty region has no safe column. Water requires a support block at the origin.
+            red.setBlockAndUpdate(new net.minecraft.core.BlockPos(0, 63, 0), net.minecraft.world.level.block.Blocks.WATER.defaultBlockState());
+            blue.setBlockAndUpdate(new net.minecraft.core.BlockPos(0, 68, 0), net.minecraft.world.level.block.Blocks.WATER.defaultBlockState());
+            var redSpawn = TeamSpawnFinder.find(red);
+            var blueSpawn = TeamSpawnFinder.atColumn(blue, redSpawn);
+            helper.assertValueEqual(redSpawn, new net.minecraft.core.BlockPos(0, 64, 0), "Water fallback uses origin surface");
+            helper.assertValueEqual(blueSpawn, new net.minecraft.core.BlockPos(0, 69, 0), "BLUE fallback keeps column and uses own surface");
+            for (int index = 0; index < handles.size(); index++) {
+                var level = handles.get(index).asLevel();
+                var spawn = index == 0 ? redSpawn : blueSpawn;
+                helper.assertTrue(level.getBlockState(spawn.below()).is(net.minecraft.world.level.block.Blocks.STONE), "Water fallback has stone support");
+                NoiseWorldChecks.safeSpawn(helper, level, spawn);
+            }
+        } finally { handles.forEach(xyz.nucleoid.fantasy.RuntimeLevelHandle::delete); }
+        helper.succeed();
     }
 }
