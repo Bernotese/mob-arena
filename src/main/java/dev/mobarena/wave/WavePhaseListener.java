@@ -7,12 +7,16 @@ import net.minecraft.network.chat.Component;
 import java.util.*;
 
 public final class WavePhaseListener implements PhaseListener {
+    private static final class Hubs extends EnumMap<TeamId,WaveConfigHub> implements AutoCloseable {
+        Hubs() { super(TeamId.class); }
+        @Override public void close() { values().forEach(WaveConfigHub::close);clear(); }
+    }
     private final WaveMenuItems items;
     public WavePhaseListener(WaveMenuItems items) { this.items=Objects.requireNonNull(items); }
     @Override public void onEnter(Phase phase, GameContext ctx) {
         if(phase!=Phase.WAVE_CONFIG) return;
         var setups=new EnumMap<TeamId,WaveSetup>(TeamId.class);
-        var hubs=new EnumMap<TeamId,WaveConfigHub>(TeamId.class);
+        var hubs=new Hubs();
         var pools=ctx.get(CollectKeys.POOLS);
         for(var team:TeamId.values()) {
             var setup=new WaveSetup(pools==null?Map.of():pools.get(team).snapshot());
@@ -33,7 +37,7 @@ public final class WavePhaseListener implements PhaseListener {
     public WaveConfigGui open(ServerPlayer player) {
         var game=GameManager.get();var ctx=game.context();
         if(game.phase()!=Phase.WAVE_CONFIG || ctx==null || ctx.team(player.getUUID())==null) {
-            player.sendSystemMessage(Component.literal("Open this menu during wave setup with a team."));return null;
+            player.sendSystemMessage(Component.literal("Open this menu during wave setup with a team.").withStyle(net.minecraft.ChatFormatting.RED));return null;
         }
         return ctx.get(WaveKeys.HUBS).get(ctx.team(player.getUUID())).open(player);
     }
@@ -44,7 +48,7 @@ public final class WavePhaseListener implements PhaseListener {
     public boolean toggle(ServerPlayer player) {
         var game=GameManager.get();var ctx=game.context();
         if(game.phase()!=Phase.WAVE_CONFIG || ctx==null || ctx.team(player.getUUID())==null) {
-            player.sendSystemMessage(Component.literal("Use ready during wave setup with a team."));return false;
+            player.sendSystemMessage(Component.literal("Use ready during wave setup with a team.").withStyle(net.minecraft.ChatFormatting.RED));return false;
         }
         var ready=ctx.get(WaveKeys.READY);UUID id=player.getUUID();boolean added=ready.add(id);
         if(!added) ready.remove(id);

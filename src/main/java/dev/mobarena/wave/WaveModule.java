@@ -6,8 +6,9 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import static net.minecraft.commands.Commands.literal;
 public final class WaveModule {
     private WaveModule() {}
-    public static void init() {
-        var items=new WaveMenuItem(WaveMenuItem.Guard.NONE);items.register();init(items);
+    public static void init() { init(WaveMenuItem.Guard.NONE); }
+    public static void init(WaveMenuItem.Guard guard) {
+        var items=new WaveMenuItem(guard);items.register();init(items);
     }
     public static void init(WaveMenuItems items) {
         dev.mobarena.collect.CollectionListener.init();
@@ -15,6 +16,9 @@ public final class WaveModule {
         CommandRegistry.register(root->{
             root.then(literal("waves").executes(c->listener.open(c.getSource().getPlayerOrException())==null?0:1));
             root.then(literal("ready").executes(c->listener.toggle(c.getSource().getPlayerOrException())?1:0));
+        });
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            for(var player:server.getPlayerList().getPlayers()) items.remove(player);
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler,server)->listener.leave(handler.player));
         ServerTickEvents.END_SERVER_TICK.register(server->{

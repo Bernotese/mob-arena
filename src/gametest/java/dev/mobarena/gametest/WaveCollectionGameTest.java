@@ -7,7 +7,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.*;
-import net.minecraft.world.entity.monster.zombie.Zombie;
 import eu.pb4.sgui.api.ClickType;
 import net.minecraft.world.inventory.ContainerInput;
 import java.util.*;
@@ -38,40 +37,53 @@ public class WaveCollectionGameTest {
     }
     @GameTest public void prepKillAndBlacklist(GameTestHelper h) {
         try(var f=new Fixture(h)) {
-            var zombie=h.spawn(EntityType.ZOMBIE,1,2,1);
+            var zombie=h.spawn(EntityTypes.ZOMBIE,1,2,1);
             zombie.hurtServer(h.getLevel(),zombie.damageSources().playerAttack(f.red),1000);
             h.assertTrue(f.ctx.get(CollectKeys.POOLS).get(TeamId.RED).count(ZOMBIE)==1,"Prep zombie kill counts once");
             h.assertTrue(f.ctx.get(CollectKeys.HITS).size()==0,"Killing hit leaves no ledger entry");
-            var cod=h.spawn(EntityType.COD,2,2,1);
+            var cod=h.spawn(EntityTypes.COD,2,2,1);
             cod.hurtServer(h.getLevel(),cod.damageSources().playerAttack(f.red),1000);
             h.assertTrue(f.ctx.get(CollectKeys.POOLS).get(TeamId.RED).count("minecraft:cod")==0,"Default short blacklist id blocks cod");
-            var baby=h.spawn(EntityType.ZOMBIE,3,2,1);baby.setBaby(true);
+            var baby=h.spawn(EntityTypes.ZOMBIE,3,2,1);baby.setBaby(true);
             baby.hurtServer(h.getLevel(),baby.damageSources().playerAttack(f.blue),1000);
             h.assertTrue(f.ctx.get(CollectKeys.POOLS).get(TeamId.BLUE).count(ZOMBIE)==1,"Baby zombie uses blue pool");
             f.game.endPhaseNow();
-            var outside=h.spawn(EntityType.ZOMBIE,4,2,1);
+            var outside=h.spawn(EntityTypes.ZOMBIE,4,2,1);
             outside.hurtServer(h.getLevel(),outside.damageSources().playerAttack(f.red),1000);
             h.assertTrue(f.ctx.get(CollectKeys.POOLS).get(TeamId.RED).count(ZOMBIE)==1,"Wave setup kill does not count");
         }h.succeed();
     }
     @GameTest public void lastHitAndUnassignedKiller(GameTestHelper h) {
         try(var f=new Fixture(h)) {
-            var victim=h.spawn(EntityType.ZOMBIE,1,2,1);
+            var victim=h.spawn(EntityTypes.ZOMBIE,1,2,1);
             victim.hurtServer(h.getLevel(),victim.damageSources().playerAttack(f.red),1);
             h.assertTrue(f.ctx.get(CollectKeys.HITS).lookup(victim.getUUID(),f.ctx.server().getTickCount()).isPresent(),"Damage event records hit");
             victim.die(victim.damageSources().lava());
             h.assertTrue(f.ctx.get(CollectKeys.POOLS).get(TeamId.RED).count(ZOMBIE)==1,"Trap death uses last hit");
-            var expired=h.spawn(EntityType.ZOMBIE,2,2,1);
+            var expired=h.spawn(EntityTypes.ZOMBIE,2,2,1);
             f.ctx.get(CollectKeys.HITS).record(expired.getUUID(),f.red.getUUID(),f.ctx.server().getTickCount()-201);
             expired.die(expired.damageSources().fall());
             h.assertTrue(f.ctx.get(CollectKeys.POOLS).get(TeamId.RED).count(ZOMBIE)==1,"Expired hit does not count");
             var stranger=TestPlayers.create(h);
             try {
-                var mob=h.spawn(EntityType.ZOMBIE,3,2,1);
+                var mob=h.spawn(EntityTypes.ZOMBIE,3,2,1);
                 mob.hurtServer(h.getLevel(),mob.damageSources().playerAttack(f.red),1);
                 mob.die(mob.damageSources().playerAttack(stranger));
                 h.assertTrue(f.ctx.get(CollectKeys.POOLS).get(TeamId.RED).count(ZOMBIE)==2,"Unassigned killer preserves attribution");
             } finally { f.ctx.server().getPlayerList().remove(stranger); }
+        }h.succeed();
+    }
+    @GameTest public void projectileAndPetKills(GameTestHelper h) {
+        try(var f=new Fixture(h)) {
+            var arrow=h.spawn(EntityTypes.ARROW,1,2,1);arrow.setOwner(f.red);
+            var shot=h.spawn(EntityTypes.ZOMBIE,2,2,1);
+            shot.hurtServer(h.getLevel(),shot.damageSources().arrow(arrow,f.red),1000);
+            var wolf=h.spawn(EntityTypes.WOLF,3,2,1);wolf.tame(f.red);
+            var bitten=h.spawn(EntityTypes.ZOMBIE,4,2,1);
+            bitten.hurtServer(h.getLevel(),bitten.damageSources().mobAttack(wolf),1000);
+            h.assertTrue(f.ctx.get(CollectKeys.POOLS).get(TeamId.RED).count(ZOMBIE)==2,"Projectile and pet responsibility count");
+            var stand=h.spawn(EntityTypes.ARMOR_STAND,5,2,1);
+            h.assertTrue(!MobEligibility.counts(stand,Set.of()),"Armor stand has no eligible spawn egg");
         }h.succeed();
     }
     @GameTest public void menuMovesSyncAndLeftovers(GameTestHelper h) throws Exception {
@@ -79,6 +91,7 @@ public class WaveCollectionGameTest {
             for(int i=0;i<30;i++) f.ctx.get(CollectKeys.POOLS).get(TeamId.RED).add(ZOMBIE);
             f.ctx.get(CollectKeys.POOLS).get(TeamId.RED).add("minecraft:cow");
             f.game.endPhaseNow();
+            h.assertTrue(WaveMenuItem.isMenu(f.red.getInventory().getItem(8)),"Wave menu item occupies hotbar slot nine");
             f.command("ma waves",f.red);
             var hub=f.ctx.get(WaveKeys.HUBS).get(TeamId.RED);
             var second=hub.open(f.mate);
@@ -96,11 +109,14 @@ public class WaveCollectionGameTest {
                 h.assertTrue(second.getGuiElement(36)==null,"Other viewer waits for tick end");
                 hub.tick(false);
                 h.assertTrue(second.getGuiElement(36)!=null,"Tick end refreshes teammate menu");
+                h.assertTrue(second.getGuiElement(36).getItemStack().get(net.minecraft.core.component.DataComponents.LORE)
+                        .lines().stream().anyMatch(line->line.getString().equals("Count: 20")),"Teammate sees current wave count");
                 f.game.endPhaseNow();
                 var plan=f.ctx.get(WaveKeys.PLANS).get(TeamId.RED);
                 h.assertTrue(plan.author()==TeamId.RED,"Plan records author");
                 h.assertTrue(plan.waves().get(2).get(ZOMBIE)==10 && plan.waves().get(2).get("minecraft:cow")==1,"Leftovers enter wave three");
                 h.assertTrue(!gui.isOpen(),"Phase exit closes menu");
+                h.assertTrue(!WaveMenuItem.isMenu(f.red.getInventory().getItem(8)),"Phase exit removes menu item");
             } finally { gui.close();second.close(); }
         }h.succeed();
     }
@@ -113,6 +129,16 @@ public class WaveCollectionGameTest {
             h.assertTrue(!f.ctx.get(WaveKeys.READY).contains(f.red.getUUID()),"Ready toggles off");
             f.command("ma ready",f.blue);f.command("ma ready",f.mate);f.command("ma ready",f.red);
             h.assertTrue(f.game.phase()==Phase.ARENA,"All online team players end setup");
+        }h.succeed();
+    }
+    @GameTest public void disconnectRechecksReady(GameTestHelper h) throws Exception {
+        try(var f=new Fixture(h)) {
+            f.game.endPhaseNow();
+            f.command("ma ready",f.red);f.command("ma ready",f.mate);
+            h.assertTrue(f.game.phase()==Phase.WAVE_CONFIG,"Unready player keeps setup open");
+            net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.invoker()
+                    .onPlayDisconnect(f.blue.connection,f.ctx.server());
+            h.assertTrue(f.game.phase()==Phase.ARENA,"Leaving unready player completes setup");
         }h.succeed();
     }
 }
