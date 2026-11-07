@@ -301,4 +301,25 @@ public class ArenaGameTest {
             .thenExecute(() -> h.assertTrue(f.results.isEmpty(), "Mate kept the team alive"))
             .thenSucceed();
     }
+
+    /** T8b reuse: one wave with all 3 enemy waves, tag wave 4, no cooldown, own listener. */
+    @GameTest(environment = "mobarena-gametest:arena_sudden", maxTicks = 600, skyAccess = true)
+    public void suddenDeathRunnerMergesEnemyWaves(GameTestHelper h) {
+        var f = new ArenaFixture(h, false, true);
+        var plans = new EnumMap<TeamId, dev.mobarena.wave.WavePlan>(TeamId.class);
+        plans.put(TeamId.BLUE, new dev.mobarena.wave.WavePlan(TeamId.BLUE, List.of(new TreeMap<>(Map.of(ZOMBIE, 1)),
+                new TreeMap<>(Map.of(ZOMBIE, 1, "minecraft:cow", 1)), new TreeMap<>())));
+        plans.put(TeamId.RED, new dev.mobarena.wave.WavePlan(TeamId.RED, List.of(new TreeMap<>(), new TreeMap<>(), new TreeMap<>())));
+        f.ctx.put(WaveKeys.PLANS, plans);
+        var group = ArenaPhaseListener.startSuddenDeath(f.ctx, f.recorder);
+        var battle = group.battle(TeamId.RED);
+        String tag = WaveTags.tag(TeamId.RED, WaveTags.SUDDEN_DEATH_WAVE);
+        h.assertTrue(battle.script.waves().size() == 1 && battle.script.waves().getFirst().equals(Map.of(ZOMBIE, 2, "minecraft:cow", 1))
+                && battle.script.cooldownTicks() == 0, "One merged wave, no cooldown");
+        h.startSequence()
+            .thenWaitUntil(() -> h.assertTrue(mobs(f.arena(TeamId.RED), tag).size() == 3, "All 3 enemy mobs spawn at once with tag 4"))
+            .thenExecute(() -> mobs(f.arena(TeamId.RED), tag).forEach(m -> kill(m, f.red)))
+            .thenWaitUntil(() -> h.assertTrue(f.results.contains("finished RED"), "First clear reports finished to the T8 listener"))
+            .thenSucceed();
+    }
 }
