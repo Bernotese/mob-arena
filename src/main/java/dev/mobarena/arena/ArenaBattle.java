@@ -154,11 +154,15 @@ public final class ArenaBattle {
         }
     }
 
+    /**
+     * Wave mobs that are not removed yet. Dying bodies count: a slime splits only when its body is
+     * removed (about 20 ticks after death), so the wave must not clear before the children exist.
+     */
     int countAlive() {
         if (arena == null || currentTag == null) return 0;
         String tag = currentTag;
         return arena.level().getEntities(EntityTypeTest.forClass(LivingEntity.class),
-                e -> e.isAlive() && e.entityTags().contains(tag)).size();
+                e -> !e.isRemoved() && e.entityTags().contains(tag)).size();
     }
 
     /** Alive mobs of the current wave in this arena. */
