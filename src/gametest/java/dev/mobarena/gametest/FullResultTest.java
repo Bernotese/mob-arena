@@ -1,6 +1,7 @@
 package dev.mobarena.gametest;
 
-import com.google.gson.JsonObject;
+import dev.mobarena.arena.ArenaBattle;
+import dev.mobarena.arena.ArenaBattles;
 import dev.mobarena.arena.BattleEvent;
 import dev.mobarena.arena.BattleFlow;
 import dev.mobarena.arena.WaveTags;
@@ -56,7 +57,7 @@ public class FullResultTest {
                 .thenExecute(f.check(() -> { f.admin("ma debug clearwave red"); f.admin("ma debug clearwave blue"); }))
                 .thenWaitUntil(() -> { waveUp(h, f, TeamId.RED, 2, 1); waveUp(h, f, TeamId.BLUE, 2, 1); })
                 .thenExecute(f.check(() -> { f.down(f.blue); f.admin("ma debug clearwave red"); }))
-                .thenWaitUntil(() -> h.assertTrue(f.battle(TeamId.BLUE).state() == BattleFlow.State.ELIMINATED, "BLUE is eliminated"))
+                .thenWaitUntil(() -> h.assertTrue(battle(h, f, TeamId.BLUE).state() == BattleFlow.State.ELIMINATED, "BLUE is eliminated"))
                 .thenExecute(f.check(() -> {
                     h.assertTrue(f.game.phase() == Phase.ARENA, "RED still runs, so no verdict yet");
                     var blue = (Outcome.Eliminated) tracker(f).arenaOutcome(TeamId.BLUE);
@@ -115,26 +116,28 @@ public class FullResultTest {
             DebugDriver.waves(TeamId.BLUE, "cow:1", "cow:2", "-");
             f.admin("ma skip");
             long maxWave = f.ctx.config().waveMaxTimeSeconds() * 20L;
+            // RED's elimination ends ARENA in the same tick and removes the battles from the context.
+            ArenaBattle[] red = new ArenaBattle[1];
             h.startSequence().thenWaitUntil(f::arenaReady)
-                .thenExecute(f.check(() -> f.down(f.blue)))
+                .thenExecute(f.check(() -> { red[0] = f.battle(TeamId.RED); f.down(f.blue); }))
                 .thenWaitUntil(() -> waveUp(h, f, TeamId.RED, 1, 1))
                 .thenExecute(f.check(() -> f.admin("ma debug clearwave red")))
                 .thenWaitUntil(() -> waveUp(h, f, TeamId.RED, 2, 2))
                 .thenExecute(f.check(() -> {
                     h.assertTrue(f.battle(TeamId.BLUE).eliminationReason().orElseThrow() == BattleEvent.Reason.ALL_DOWN, "BLUE is down");
+                    var blueState = DebugDriver.state(f.server).getAsJsonObject("battles").getAsJsonObject("BLUE");
+                    h.assertTrue(blueState.get("reason").getAsString().equals("ALL_DOWN"), "State reason: " + blueState);
                     var cow = f.battle(TeamId.RED).waveMobs().getFirst();
                     cow.hurtServer((ServerLevel) cow.level(), cow.damageSources().genericKill(), Float.MAX_VALUE);
                 }))
-                .thenWaitUntil(() -> h.assertTrue(f.battle(TeamId.RED).kills() == 1, "One kill in wave 2"))
-                .thenWaitUntil(() -> h.assertTrue(f.battle(TeamId.RED).state() == BattleFlow.State.ELIMINATED, "Wave max time ends RED"))
+                .thenWaitUntil(() -> h.assertTrue(red[0].kills() == 1, "One kill in wave 2"))
+                .thenWaitUntil(() -> h.assertTrue(red[0].state() == BattleFlow.State.ELIMINATED, "Wave max time ends RED"))
                 .thenExecute(f.check(() -> {
-                    h.assertTrue(f.battle(TeamId.RED).eliminationReason().orElseThrow() == BattleEvent.Reason.TIME, "RED reason TIME");
-                    var red = (Outcome.Eliminated) tracker(f).arenaOutcome(TeamId.RED);
-                    h.assertTrue(red.progress().clearedWaves() == 1 && red.progress().killsInCurrentWave() == 1,
-                            "RED progress: 1 wave cleared, 1 kill in wave 2: " + red.progress());
-                    h.assertTrue(red.progress().ticks() >= maxWave, "Progress time includes the full wave 2: " + red.progress().ticks());
-                    JsonObject battles = DebugDriver.state(f.server).getAsJsonObject("battles");
-                    h.assertTrue(battles.getAsJsonObject("RED").get("reason").getAsString().equals("TIME"), "State reason TIME");
+                    h.assertTrue(red[0].eliminationReason().orElseThrow() == BattleEvent.Reason.TIME, "RED reason TIME");
+                    var outcome = (Outcome.Eliminated) tracker(f).arenaOutcome(TeamId.RED);
+                    h.assertTrue(outcome.progress().clearedWaves() == 1 && outcome.progress().killsInCurrentWave() == 1,
+                            "RED progress: 1 wave cleared, 1 kill in wave 2: " + outcome.progress());
+                    h.assertTrue(outcome.progress().ticks() >= maxWave, "Progress time includes the full wave 2: " + outcome.progress().ticks());
                 }))
                 .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.END, "Both eliminated: verdict"))
                 .thenExecute(f.check(() -> {
@@ -158,13 +161,13 @@ public class FullResultTest {
             f.admin("ma skip");
             int[] maxRedMobs = {0};
             h.onEachTick(() -> {
-                var battles = dev.mobarena.arena.ArenaBattles.get(f.ctx);
+                var battles = ArenaBattles.get(f.ctx);
                 if (battles != null && battles.battle(TeamId.RED) != null)
                     maxRedMobs[0] = Math.max(maxRedMobs[0], battles.battle(TeamId.RED).waveMobs().size());
             });
             long countdown = f.ctx.config().waveCountdownSeconds() * 20L, cooldown = f.ctx.config().waveCooldownSeconds() * 20L;
             h.startSequence().thenWaitUntil(f::arenaReady)
-                .thenWaitUntil(() -> h.assertTrue(f.battle(TeamId.RED).state() == BattleFlow.State.FINISHED, "RED finishes"))
+                .thenWaitUntil(() -> h.assertTrue(battle(h, f, TeamId.RED).state() == BattleFlow.State.FINISHED, "RED finishes"))
                 .thenExecute(f.check(() -> {
                     h.assertTrue(maxRedMobs[0] == 0, "No mob spawns in RED's arena");
                     var red = tracker(f).arenaOutcome(TeamId.RED);
@@ -185,11 +188,18 @@ public class FullResultTest {
         } catch (RuntimeException | Error e) { f.close(); throw e; }
     }
 
+    /** Fails (no crash) when the battles are gone, for example after the phase ended. */
+    private static ArenaBattle battle(GameTestHelper h, FullGameFixture f, TeamId team) {
+        var group = ArenaBattles.get(f.ctx);
+        h.assertTrue(group != null && group.battle(team) != null, team + " battle exists, phase " + f.game.phase());
+        return group.battle(team);
+    }
+
     private static ResultTracker tracker(FullGameFixture f) { return (ResultTracker) f.ctx.get(ResultHooks.KEY); }
 
     /** The team fights the given wave and all of its mobs are alive. */
     private static void waveUp(GameTestHelper h, FullGameFixture f, TeamId team, int wave, int mobs) {
-        var battle = f.battle(team);
+        var battle = battle(h, f, team);
         h.assertTrue(battle.state() == BattleFlow.State.FIGHT && WaveTags.tag(team, wave).equals(battle.currentTag())
                 && battle.waveMobs().size() == mobs, team + " fights wave " + wave + " with " + mobs + " mobs");
     }
