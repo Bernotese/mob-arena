@@ -41,7 +41,10 @@ public class BackpackLifecycleGameTest {
             helper.assertTrue(BackpackModule.open(red), "WAVE_CONFIG allows backpack access");
             helper.assertTrue(storage.inventory(TeamId.RED).getItem(1).getCount() == 7, "Wave configuration keeps team storage");
             game.endPhaseNow(); helper.assertTrue(BackpackModule.open(red), "ARENA allows backpack access");
-            game.enterSuddenDeath();
+            // Backpack rules only: the real sudden death start moves players to the arena, which closes menus.
+            var starter = dev.mobarena.result.ResultModule.suddenDeathStarter();
+            dev.mobarena.result.ResultModule.setSuddenDeathStarter((ctx, hooks) -> { });
+            try { game.enterSuddenDeath(); } finally { dev.mobarena.result.ResultModule.setSuddenDeathStarter(starter); }
             helper.assertTrue(red.containerMenu instanceof ChestMenu, "SUDDEN_DEATH keeps existing backpack viewers");
             helper.assertTrue(BackpackModule.open(red), "SUDDEN_DEATH allows backpack access");
             game.finish(); helper.assertTrue(!BackpackModule.open(red), "END has no backpack access");

@@ -115,6 +115,15 @@ public final class ArenaBattles implements AutoCloseable {
         spectate(player, other != null && other.arena().isPresent() ? other.arena().get() : battle.arena().get());
     }
 
+    /** Sudden death start: every online team player alive at the own spawn, no effects (T8 Q1). */
+    void resetPlayers() {
+        for (var battle : all()) for (ServerPlayer player : onlinePlayers(battle.team)) {
+            player.removeAllEffects();
+            // Arena not loaded yet: onReady places the player.
+            if (battle.loadArena().isPresent()) battle.placeAtSpawn(player);
+        }
+    }
+
     void broadcast(Component message) {
         for (var player : ctx.server().getPlayerList().getPlayers()) player.sendSystemMessage(message);
     }
