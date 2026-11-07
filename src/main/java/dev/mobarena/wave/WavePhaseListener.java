@@ -24,6 +24,7 @@ public final class WavePhaseListener implements PhaseListener {
         }
         ctx.put(WaveKeys.SETUPS,setups);ctx.put(WaveKeys.HUBS,hubs);ctx.put(WaveKeys.READY,new HashSet<>());
         publishReady(ctx,null);
+        items.clearSkipped();
         for(var player:players(ctx,null)) items.give(player,ctx,()->open(player));
     }
     @Override public void onExit(Phase phase, GameContext ctx) {
@@ -33,6 +34,7 @@ public final class WavePhaseListener implements PhaseListener {
         ctx.get(WaveKeys.SETUPS).forEach((team,setup)->{setup.finish();plans.put(team,new WavePlan(team,setup.snapshot()));});
         ctx.put(WaveKeys.PLANS,plans);
         for(var player:ctx.server().getPlayerList().getPlayers()) items.remove(player);
+        items.clearSkipped();
     }
     public WaveConfigGui open(ServerPlayer player) {
         var game=GameManager.get();var ctx=game.context();

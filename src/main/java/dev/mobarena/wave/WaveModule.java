@@ -32,16 +32,22 @@ public final class WaveModule {
         GuardedItems.register(WaveMenuItem.TAG,WaveMenuItem::createStack,player -> {
             var game=GameManager.get();
             return game.phase()==Phase.WAVE_CONFIG && game.context()!=null
-                    && game.context().team(player.getUUID())!=null;
+                    && game.context().team(player.getUUID())!=null && !items.skipped(player.getUUID());
         });
         dev.mobarena.collect.CollectionListener.init();
         var listener=new WavePhaseListener(items);GameManager.get().register(listener);
+        items.setOpener(listener::open);
         CommandRegistry.register(root->{
             root.then(literal("waves").executes(c->listener.open(c.getSource().getPlayerOrException())==null?0:1));
             root.then(literal("ready").executes(c->listener.toggle(c.getSource().getPlayerOrException())?1:0));
         });
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
             for(var player:server.getPlayerList().getPlayers()) items.remove(player);
+        });
+        ServerPlayConnectionEvents.JOIN.register((handler,sender,server)->{
+            var game=GameManager.get();var ctx=game.context();
+            // A stale menu item from an earlier wave setup is guarded and useless.
+            if(game.phase()!=Phase.WAVE_CONFIG || ctx==null || ctx.team(handler.player.getUUID())==null) items.remove(handler.player);
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler,server)->listener.leave(handler.player));
         ServerTickEvents.END_SERVER_TICK.register(server->{
