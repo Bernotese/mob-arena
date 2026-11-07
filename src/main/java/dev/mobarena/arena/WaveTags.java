@@ -29,4 +29,7 @@ public final class WaveTags {
         } catch (IllegalArgumentException e) { return Optional.empty(); }
     }
     public static boolean isWaveTag(String tag) { return parse(tag).isPresent(); }
+    public static boolean isWaveEntity(net.minecraft.world.entity.Entity entity) {
+        return entity != null && entity.entityTags().stream().anyMatch(WaveTags::isWaveTag);
+    }
 }

@@ -119,14 +119,19 @@ public final class ArenaBattles implements AutoCloseable {
         for (var player : ctx.server().getPlayerList().getPlayers()) player.sendSystemMessage(message);
     }
 
-    /** Stop all battles, remove wave mobs, bring down players back. */
-    @Override public void close() {
-        for (var battle : all()) battle.stop();
+    /** Phase end: bring players in the respawn timer back to the spawn, then close. */
+    public void end() {
         for (UUID id : respawns.down()) {
             var player = ctx.server().getPlayerList().getPlayer(id);
             var battle = player == null ? null : battles.get(ctx.team(id));
             if (player != null && battle != null && battle.arena().isPresent()) battle.placeAtSpawn(player);
         }
+        close();
+    }
+
+    /** Stop all battles and remove wave mobs. No teleports: GameContext.clear also calls this at server shutdown. */
+    @Override public void close() {
+        for (var battle : all()) battle.stop();
         respawns.clear();
         battles.clear();
     }

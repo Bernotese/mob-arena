@@ -22,6 +22,9 @@ import net.minecraft.world.level.Level;
 final class ArenaRules {
     private ArenaRules() {}
 
+    static final java.util.Set<EntityType<?>> PLAYER_BUILT = java.util.Set.of(
+            EntityTypes.IRON_GOLEM, EntityTypes.SNOW_GOLEM, EntityTypes.COPPER_GOLEM, EntityTypes.WITHER);
+
     static void register() {
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
             var battle = ArenaBattles.at(entity.level());
@@ -32,10 +35,21 @@ final class ArenaRules {
             var tags = from.entityTags().stream().filter(WaveTags::isWaveTag).toList();
             if (tags.isEmpty()) return;
             var battle = ArenaBattles.at(from.level());
+            // Safety net: a wave mob of no running wave (old wave, stopped battle) leaves no children.
+            if (battle == null || battle.currentTag() == null || !from.entityTags().contains(battle.currentTag())) {
+                ArenaBattle.discardNoSplit(to);
+                return;
+            }
             tags.forEach(to::addTag);
             if (from.isCurrentlyGlowing() || from.hasGlowingTag()) to.setGlowingTag(true);
             to.setPersistenceRequired();
-            if (battle != null) WaveSpawner.prepare(to, battle, null);
+            WaveSpawner.prepare(to, battle, null);
+        });
+        // Wave mobs never hurt each other (direct, projectile or explosion), so no revenge chain starts.
+        ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
+            var attacker = source.getEntity();
+            return attacker == null || attacker == entity || attacker.level() != entity.level()
+                    || !WaveMobAi.waveMob(entity) || !WaveMobAi.waveMob(attacker);
         });
         ServerEntityEvents.ALLOW_LOAD.register(ArenaRules::allowLoad);
         ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
@@ -58,6 +72,8 @@ final class ArenaRules {
 
     private static boolean allowLoad(Entity entity, ServerLevel level, EntitySpawnReason reason, boolean fromDisk) {
         if (fromDisk || !(entity instanceof Mob mob) || !isArena(level)) return true;
+        // Player-built golems and withers do not work in arenas (T7b review decision).
+        if (reason == EntitySpawnReason.TRIGGERED && PLAYER_BUILT.contains(entity.getType())) return false;
         if (reason != null) switch (reason) {
             // No natural spawns in arenas; no player mobs from eggs, dispensers or buckets (T7 Q8).
             case NATURAL, CHUNK_GENERATION, PATROL, EVENT, STRUCTURE, SPAWNER, TRIAL_SPAWNER,

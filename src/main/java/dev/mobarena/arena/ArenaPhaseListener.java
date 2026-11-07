@@ -62,7 +62,7 @@ public final class ArenaPhaseListener implements PhaseListener {
     @Override public void onExit(Phase phase, GameContext ctx) {
         if (phase != Phase.ARENA && phase != Phase.SUDDEN_DEATH) return;
         var group = ArenaBattles.get(ctx);
-        if (group != null) group.close();
+        if (group != null) group.end();
         ctx.put(ArenaBattles.KEY, null);
     }
 }
