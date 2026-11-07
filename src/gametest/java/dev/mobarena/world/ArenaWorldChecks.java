@@ -75,7 +75,7 @@ final class ArenaWorldChecks {
         arena.addFreshEntity(zombie);
         var controlLevel = h.getLevel();
         var controlPos = h.absolutePos(new BlockPos(2, 2, 2));
-        h.runBeforeTestEnd(() -> { rain.setRaining(raining); zombie.discard(); });
+        dev.mobarena.gametest.TestEnd.run(h, () -> { rain.setRaining(raining); zombie.discard(); });
         rain.setRaining(false);
         controlLevel.setRainLevel(0);
         h.runAfterDelay(100, () -> {
