@@ -380,32 +380,76 @@ public class ArenaGameTest {
             .thenSucceed();
     }
 
+    /** User decision: a player-built iron golem is no wave mob, does not block the clear, and fights wave mobs. */
     @GameTest(environment = "mobarena:arena_golem", maxTicks = 600, skyAccess = true)
-    public void playerBuiltGolemsAndWithersAreBlocked(GameTestHelper h) {
+    public void playerBuiltGolemIsNoWaveMob(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
+        var battle = f.run(TeamId.RED, 1, 20, LONG, 20, Map.of(ZOMBIE, 1), Map.of(), Map.of());
+        String tag = WaveTags.tag(TeamId.RED, 1);
+        IronGolem[] golem = {null};
+        Mob[] zombie = {null};
         h.startSequence()
-            .thenWaitUntil(() -> h.assertTrue(f.red.level() == f.arena(TeamId.RED).level(), "Arena is ready"))
+            .thenWaitUntil(() -> h.assertTrue(mobs(f.arena(TeamId.RED), tag).size() == 1, "Wave zombie spawns"))
+            // Build after the glow starts: a new wave child would glow now, a built golem must not.
+            .thenWaitUntil(() -> h.assertTrue(battle.glowing(), "Wave glow starts"))
             .thenExecute(() -> {
-                var arena = f.arena(TeamId.RED);
-                var level = arena.level();
-                var pos = arena.layout().mobSpawns().get(5);
-                for (var type : List.<EntityType<? extends Mob>>of(EntityTypes.IRON_GOLEM, EntityTypes.SNOW_GOLEM,
-                        EntityTypes.COPPER_GOLEM, EntityTypes.WITHER)) {
-                    var mob = type.create(level, EntitySpawnReason.TRIGGERED);
-                    mob.snapTo(Vec3.atBottomCenterOf(pos));
-                    h.assertTrue(!level.addFreshEntity(mob), "Built " + type.toShortString() + " is blocked");
-                }
-                // A real snow golem pattern: the pumpkin placement triggers the build.
-                level.setBlockAndUpdate(pos, Blocks.SNOW_BLOCK.defaultBlockState());
-                level.setBlockAndUpdate(pos.above(), Blocks.SNOW_BLOCK.defaultBlockState());
+                var level = f.arena(TeamId.RED).level();
+                var pos = f.arena(TeamId.RED).layout().mobSpawns().get(5);
+                // Vanilla iron golem pattern; the pumpkin placement builds it (spawn reason TRIGGERED).
+                level.setBlockAndUpdate(pos, Blocks.IRON_BLOCK.defaultBlockState());
+                level.setBlockAndUpdate(pos.above(), Blocks.IRON_BLOCK.defaultBlockState());
+                level.setBlockAndUpdate(pos.above().east(), Blocks.IRON_BLOCK.defaultBlockState());
+                level.setBlockAndUpdate(pos.above().west(), Blocks.IRON_BLOCK.defaultBlockState());
                 level.setBlockAndUpdate(pos.above(2), Blocks.CARVED_PUMPKIN.defaultBlockState());
-                h.assertTrue(level.getEntities(net.minecraft.world.level.entity.EntityTypeTest.forClass(
-                        net.minecraft.world.entity.animal.golem.SnowGolem.class), e -> true).isEmpty(), "No snow golem in the arena");
-                var command = EntityTypes.IRON_GOLEM.create(level, EntitySpawnReason.COMMAND);
-                command.snapTo(Vec3.atBottomCenterOf(pos).add(3, 0, 0));
-                h.assertTrue(level.addFreshEntity(command), "Admin summon still works");
-                command.discard();
+                var golems = level.getEntities(net.minecraft.world.level.entity.EntityTypeTest.forClass(IronGolem.class), e -> e.isAlive());
+                h.assertTrue(golems.size() == 1, "The pattern builds one iron golem: " + golems.size());
+                golem[0] = golems.getFirst();
+                h.assertTrue(!WaveMobAi.waveMob(golem[0]), "Built golem has no wave tag: " + golem[0].entityTags());
+                h.assertTrue(battle.countAlive() == 1, "Built golem is not counted for the wave: " + battle.countAlive());
+                zombie[0] = mobs(f.arena(TeamId.RED), tag).getFirst();
+                h.assertTrue(zombie[0].hasGlowingTag(), "Wave zombie glows");
+                h.assertTrue(!golem[0].hasGlowingTag(), "Built golem does not glow");
+                golem[0].setTarget(zombie[0]);
+                h.assertTrue(golem[0].getTarget() == zombie[0], "Built golem can target a wave zombie");
             })
+            .thenIdle(2)
+            .thenExecute(() -> {
+                // The end-of-tick wave target reset must not drop it (only wave mobs lose wave targets).
+                h.assertTrue(golem[0].getTarget() == zombie[0] || !zombie[0].isAlive(), "Built golem keeps the wave zombie as target");
+                h.assertTrue(golem[0].getTarget() != f.red, "Built golem is not engaged against the team");
+                mobs(f.arena(TeamId.RED), tag).forEach(m -> kill(m, f.red));
+            })
+            .thenWaitUntil(() -> h.assertTrue(battle.flow.progress().clearedWaves() == 1, "Wave clears while the golem lives"))
+            .thenExecute(() -> {
+                h.assertTrue(golem[0].isAlive(), "Golem is still alive");
+                golem[0].discard();
+            })
+            .thenSucceed();
+    }
+
+    /** User decision: a player-built wither is no wave mob and does not block the clear. */
+    @GameTest(environment = "mobarena:arena_wither", maxTicks = 600, skyAccess = true)
+    public void playerBuiltWitherIsNoWaveMob(GameTestHelper h) {
+        var f = new ArenaFixture(h, false, true);
+        var battle = f.run(TeamId.RED, 1, 20, LONG, LONG, Map.of(ZOMBIE, 1), Map.of(), Map.of());
+        String tag = WaveTags.tag(TeamId.RED, 1);
+        net.minecraft.world.entity.boss.wither.WitherBoss[] wither = {null};
+        dev.mobarena.gametest.TestEnd.run(h, () -> { if (wither[0] != null) wither[0].discard(); });
+        h.startSequence()
+            .thenWaitUntil(() -> h.assertTrue(mobs(f.arena(TeamId.RED), tag).size() == 1, "Wave zombie spawns"))
+            .thenExecute(() -> {
+                var level = f.arena(TeamId.RED).level();
+                // Same path as the vanilla wither build: TRIGGERED create, invulnerable start phase.
+                wither[0] = EntityTypes.WITHER.create(level, EntitySpawnReason.TRIGGERED);
+                wither[0].snapTo(Vec3.atBottomCenterOf(f.arena(TeamId.RED).layout().mobSpawns().get(5)));
+                wither[0].makeInvulnerable();
+                h.assertTrue(level.addFreshEntity(wither[0]), "Built wither is allowed in the arena");
+                h.assertTrue(!WaveMobAi.waveMob(wither[0]), "Built wither has no wave tag: " + wither[0].entityTags());
+                h.assertTrue(battle.countAlive() == 1, "Built wither is not counted for the wave: " + battle.countAlive());
+                mobs(f.arena(TeamId.RED), tag).forEach(m -> kill(m, f.red));
+            })
+            .thenWaitUntil(() -> h.assertTrue(battle.flow.progress().clearedWaves() == 1, "Wave clears while the wither lives"))
+            .thenExecute(() -> h.assertTrue(wither[0].isAlive() && !WaveMobAi.waveMob(wither[0]), "Wither is alive and still untagged"))
             .thenSucceed();
     }
 
