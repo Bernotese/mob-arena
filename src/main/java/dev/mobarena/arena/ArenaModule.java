@@ -12,6 +12,8 @@ public final class ArenaModule {
     public static void init(LobbyManager lobby) {
         GameManager.get().register(new ArenaPhaseListener());
         ArenaRules.register();
+        dev.mobarena.result.ResultModule.setSuddenDeathStarter(
+                (ctx, hooks) -> ArenaPhaseListener.startSuddenDeath(ctx, BattleListener.of(hooks)));
         for (Phase phase : new Phase[]{Phase.ARENA, Phase.SUDDEN_DEATH}) {
             lobby.registerRejoinHook(phase, (ctx, player) -> {
                 var group = ArenaBattles.get(ctx);

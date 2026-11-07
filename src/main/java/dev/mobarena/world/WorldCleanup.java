@@ -19,7 +19,22 @@ public final class WorldCleanup implements PhaseListener {
     private static final int SWEEP_TICKS = 200;
     private WorldCleanup() {}
     public static final WorldCleanup INSTANCE = new WorldCleanup();
+    /** Game levels that are open; Fantasy deletes them without close(), so this module closes them. */
+    private static final Set<net.minecraft.server.level.ServerLevel> OPEN = Collections.newSetFromMap(new IdentityHashMap<>());
     static void track(RuntimeLevelHandle handle) { HANDLES.add(handle); }
+    static void trackOpen(net.minecraft.server.level.ServerLevel level) { OPEN.add(level); }
+
+    /**
+     * Fantasy's delete removes the level from the server map, fires UNLOAD, then deletes the folder.
+     * It never calls close(), so the chunk I/O worker stays open and can reschedule into the shared
+     * I/O pool after the dedicated server shuts it down. Close only levels that left the map:
+     * vanilla still closes levels that remain in it.
+     */
+    static void onUnload(MinecraftServer server, net.minecraft.server.level.ServerLevel level) {
+        if (!OPEN.remove(level) || server.getLevel(level.dimension()) == level) return;
+        try { level.close(); }
+        catch (Exception e) { MobArena.LOGGER.error("Cannot close removed game level {}", level.dimension().identifier(), e); }
+    }
 
     public static void clearRespawnPoints(MinecraftServer server) {
         for (var player : server.getPlayerList().getPlayers()) {

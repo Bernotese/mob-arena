@@ -48,5 +48,6 @@ public final class WorldModule {
         ServerLifecycleEvents.SERVER_STARTING.register(WorldCleanup::removeCrashLeftovers);
         ServerLifecycleEvents.SERVER_STOPPING.register(WorldCleanup::clean);
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(WorldCleanup::sweep);
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents.UNLOAD.register(WorldCleanup::onUnload);
     }
 }

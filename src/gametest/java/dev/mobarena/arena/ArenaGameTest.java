@@ -25,7 +25,7 @@ public class ArenaGameTest {
     private static final String ZOMBIE = "minecraft:zombie";
     private static final int LONG = 20 * 600;
 
-    private static void kill(LivingEntity mob, ServerPlayer by) {
+    static void kill(LivingEntity mob, ServerPlayer by) {
         mob.hurtServer((net.minecraft.server.level.ServerLevel) mob.level(), mob.damageSources().playerAttack(by), Float.MAX_VALUE);
     }
     /** Mock players never send "loaded" and never finish a dimension change, so vanilla makes them invulnerable. */
@@ -33,11 +33,11 @@ public class ArenaGameTest {
         player.hasChangedDimension();
         player.connection.handleAcceptPlayerLoad(new net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket());
     }
-    private static void killPlayer(ServerPlayer player) {
+    static void killPlayer(ServerPlayer player) {
         damageable(player);
         player.hurtServer(player.level(), player.damageSources().genericKill(), Float.MAX_VALUE);
     }
-    private static List<? extends Mob> mobs(Arena arena, String tag) {
+    static List<? extends Mob> mobs(Arena arena, String tag) {
         if (arena == null) return List.of();
         return arena.level().getEntities(net.minecraft.world.level.entity.EntityTypeTest.forClass(Mob.class),
                 e -> e.isAlive() && e.entityTags().contains(tag));

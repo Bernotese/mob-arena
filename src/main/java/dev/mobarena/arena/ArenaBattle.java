@@ -42,6 +42,14 @@ public final class ArenaBattle {
     public TeamId team() { return team; }
     public BattleFlow.State state() { return flow.state(); }
     public Optional<Arena> arena() { return Optional.ofNullable(arena); }
+    /** Gets the arena from the source once it exists. */
+    Optional<Arena> loadArena() {
+        if (arena == null && !stopped) {
+            arena = arenaSource.get().orElse(null);
+            if (arena != null) group.register(arena.level(), this);
+        }
+        return arena();
+    }
     public String currentTag() { return currentTag; }
     public int kills() { return kills; }
     public boolean glowing() { return glow; }
@@ -60,10 +68,7 @@ public final class ArenaBattle {
             if (!stopped && now % 20 == 0) hud();
             return;
         }
-        if (arena == null) {
-            arena = arenaSource.get().orElse(null);
-            if (arena != null) group.register(arena.level(), this);
-        }
+        loadArena();
         boolean ready = arena != null;
         int alive = 0;
         boolean spawningDone = true;

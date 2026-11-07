@@ -29,8 +29,9 @@ public final class ArenaPhaseListener implements PhaseListener {
     }
 
     /**
-     * T8b: call in SUDDEN_DEATH.onEnter. Each team fights all mobs of its 3 enemy waves at once
-     * (tag wave 4), countdown as normal, no cooldown, max time suddenDeathMaxTimeSeconds.
+     * T8b: called in SUDDEN_DEATH.onEnter (ResultModule starter). Each team fights all mobs of its 3 enemy
+     * waves at once (tag wave 4), countdown as normal, no cooldown, max time suddenDeathMaxTimeSeconds.
+     * All online team players are reset at the own spawn at once (SPEC 8.1).
      */
     public static ArenaBattles startSuddenDeath(GameContext ctx, BattleListener listener) {
         var old = ArenaBattles.get(ctx);
@@ -41,11 +42,14 @@ public final class ArenaPhaseListener implements PhaseListener {
         var config = ctx.config();
         for (TeamId team : TeamId.values()) {
             WavePlan plan = plans == null ? null : plans.get(team.opponent());
-            SortedMap<String, Integer> all = new TreeMap<>();
-            if (plan != null) plan.waves().forEach(w -> w.forEach((id, n) -> all.merge(id, n, Integer::sum)));
-            var script = new BattleScript(List.of(all), config.waveCountdownSeconds() * 20, 0,
+            var script = new BattleScript(List.of(SuddenDeathScript.merge(plan == null ? null : plan.waves())), config.waveCountdownSeconds() * 20, 0,
                     config.suddenDeathMaxTimeSeconds() * 20, config.mobGlowAfterSeconds() * 20);
             group.start(team, () -> Arena.fromWorlds(ctx, team), script, listener, true);
+        }
+        if (ctx.server() != null) {
+            group.broadcast(Component.literal("Sudden death! Each team fights all enemy waves at once. "
+                    + "The first team that kills all mobs wins.").withStyle(ChatFormatting.DARK_PURPLE));
+            group.resetPlayers();
         }
         return group;
     }

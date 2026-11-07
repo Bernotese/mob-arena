@@ -22,7 +22,10 @@ final class ArenaFixture implements AutoCloseable {
         }
     };
 
-    ArenaFixture(GameTestHelper h, boolean withMate, boolean enterArena) {
+    ArenaFixture(GameTestHelper h, boolean withMate, boolean enterArena) { this(h, withMate, enterArena, false); }
+
+    /** realResults: keep the real ResultTracker (T8 resolver and sudden death), no recording hooks. */
+    ArenaFixture(GameTestHelper h, boolean withMate, boolean enterArena, boolean realResults) {
         this.h = h;
         TestEnd.stopStaleGame();
         red = TestPlayers.create(h); blue = TestPlayers.create(h);
@@ -32,7 +35,7 @@ final class ArenaFixture implements AutoCloseable {
         if (mate != null) teams.put(mate.getUUID(), TeamId.RED);
         if (!game.start(h.getLevel().getServer(), teams, teams.keySet())) throw new IllegalStateException("Cannot start game");
         ctx = game.context();
-        ctx.put(ResultHooks.KEY, new ResultHooks() {
+        if (!realResults) ctx.put(ResultHooks.KEY, new ResultHooks() {
             @Override public void teamFinished(TeamId team, long timeTicks) { recorder.finished(team, timeTicks); }
             @Override public void teamEliminated(TeamId team, TeamProgress progress) { recorder.eliminated(team, progress); }
         });
