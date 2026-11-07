@@ -4,6 +4,10 @@ import dev.mobarena.team.TeamId;
 import net.minecraft.server.MinecraftServer;
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.function.Function;
+import java.util.function.Consumer;
+import dev.mobarena.MobArena;
+/** Server thread only. Listeners run in registration order. */
 public final class GameManager {
     private static final GameManager INSTANCE = new GameManager();
     private final List<PhaseListener> listeners = new ArrayList<>();
@@ -11,6 +15,18 @@ public final class GameManager {
     private GameContext context;
     private Supplier<MobArenaConfig> config = MobArenaConfig::new;
     private boolean transitioning;
+    private Phase pending;
+    private Function<GameContext, ResultHooks> resultHooks = ctx -> new ResultHooks() {
+        public void teamFinished(TeamId team, long timeTicks) {}
+        public void teamEliminated(TeamId team, TeamProgress progress) {}
+    };
+    public void setResultHooksFactory(Function<GameContext, ResultHooks> factory) { resultHooks = Objects.requireNonNull(factory); }
+    private void notifyListeners(String event, Consumer<PhaseListener> call) {
+        for (PhaseListener listener : List.copyOf(listeners)) {
+            try { call.accept(listener); }
+            catch (Exception e) { MobArena.LOGGER.error("Phase listener failed during {}: {}", event, listener.getClass().getName(), e); }
+        }
+    }
     public static GameManager get() { return INSTANCE; }
     public void register(PhaseListener listener) { listeners.add(Objects.requireNonNull(listener)); }
     public Phase phase() { return phase; }
@@ -20,6 +36,7 @@ public final class GameManager {
         if (phase != Phase.LOBBY) return false;
         for (TeamId team : TeamId.values()) if (online.stream().noneMatch(id -> teams.get(id) == team)) return false;
         context = new GameContext(server, new Random().nextLong(), teams, config.get());
+        context.put(ResultHooks.KEY, Objects.requireNonNull(resultHooks.apply(context)));
         transition(Phase.PREP); return true;
     }
     public void tick() {
@@ -27,13 +44,13 @@ public final class GameManager {
         Phase before = phase;
         context.timer().tick();
         for (PhaseListener listener : List.copyOf(listeners)) {
-            listener.onTick(before, context);
+            try { listener.onTick(before, context); }
+            catch (Exception e) { MobArena.LOGGER.error("Phase tick listener failed: {}", listener.getClass().getName(), e); }
             if (phase != before) return;
         }
         if (context != null && context.timer().expired()) endPhaseNow();
     }
     public void endPhaseNow() {
-        if (transitioning) return;
         switch (phase) {
             case LOBBY -> { }
             case PREP -> transition(Phase.WAVE_CONFIG);
@@ -46,23 +63,26 @@ public final class GameManager {
     public void enterSuddenDeath() { if (phase == Phase.ARENA) transition(Phase.SUDDEN_DEATH); }
     public void finish() { if (context != null && phase != Phase.END) transition(Phase.END); }
     private void transition(Phase next) {
-        if (transitioning) throw new IllegalStateException("Nested phase transition");
+        if (transitioning) { pending = next; return; }
+        if (context == null) return;
         transitioning = true;
         try {
-            for (PhaseListener listener : List.copyOf(listeners)) listener.onExit(phase, context);
+            notifyListeners("exit", listener -> listener.onExit(phase, context));
             phase = next;
             context.setConfig(config.get());
-            MobArenaConfig c = context.config();
+            MobArenaConfig.Snapshot c = context.config();
             long seconds = switch (next) {
-                case PREP -> c.prepTimeSeconds;
-                case WAVE_CONFIG -> c.waveConfigTimeSeconds;
-                case END -> c.endScreenSeconds;
+                case PREP -> c.prepTimeSeconds();
+                case WAVE_CONFIG -> c.waveConfigTimeSeconds();
+                case END -> c.endScreenSeconds();
                 case SUDDEN_DEATH -> -1;
                 default -> -1;
             };
             context.timer().reset(seconds < 0 ? -1 : seconds * 20);
-            for (PhaseListener listener : List.copyOf(listeners)) listener.onEnter(next, context);
+            notifyListeners("enter", listener -> listener.onEnter(next, context));
             if (next == Phase.LOBBY) { context.clear(); context = null; }
         } finally { transitioning = false; }
+        Phase queued = pending; pending = null;
+        if (queued != null && context != null && queued != phase) transition(queued);
     }
 }

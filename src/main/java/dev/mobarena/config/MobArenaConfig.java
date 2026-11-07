@@ -10,6 +10,7 @@ public final class MobArenaConfig {
     public int waveCountdownSeconds = 10;
     public int waveCooldownSeconds = 20;
     public int waveMaxTimeSeconds = 900;
+    public int maxAliveMobs = 150;
     public int suddenDeathMaxTimeSeconds = 600;
     public int arenaRespawnSeconds = 10;
     public int mobGlowAfterSeconds = 60;
@@ -17,6 +18,18 @@ public final class MobArenaConfig {
     public boolean randomizerEnabled = true;
     public List<String> mobBlacklist = new ArrayList<>(List.of("ender_dragon", "player", "armor_stand", "cod", "salmon", "tropical_fish", "pufferfish"));
     public String arenaTemplate = "default";
+    public record Snapshot(int prepTimeSeconds, int waveConfigTimeSeconds, int waveCountdownSeconds,
+            int waveCooldownSeconds, int waveMaxTimeSeconds, int suddenDeathMaxTimeSeconds,
+            int arenaRespawnSeconds, int mobGlowAfterSeconds, int endScreenSeconds, int maxAliveMobs,
+            boolean randomizerEnabled, List<String> mobBlacklist, String arenaTemplate) {
+        public Snapshot { mobBlacklist = List.copyOf(mobBlacklist); }
+    }
+    public Snapshot snapshot() {
+        validate();
+        return new Snapshot(prepTimeSeconds, waveConfigTimeSeconds, waveCountdownSeconds, waveCooldownSeconds,
+            waveMaxTimeSeconds, suddenDeathMaxTimeSeconds, arenaRespawnSeconds, mobGlowAfterSeconds,
+            endScreenSeconds, maxAliveMobs, randomizerEnabled, mobBlacklist, arenaTemplate);
+    }
     public MobArenaConfig copy() { return GSON.fromJson(GSON.toJson(this), MobArenaConfig.class); }
     public static MobArenaConfig load(Path path) throws IOException {
         if (!Files.exists(path)) { MobArenaConfig c = new MobArenaConfig(); c.save(path); return c; }
