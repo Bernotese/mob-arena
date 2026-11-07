@@ -37,7 +37,9 @@ final class EndSequence implements PhaseListener {
     @Override public void onEnter(Phase phase, GameContext ctx) {
         if (phase != Phase.END) return;
         var result = result(ctx);
-        HudOverrides.of(ctx).setResult(result.winner().orElse(null));
+        // Boss bar and title use the same text ("Game over" after an admin skip, not "Draw").
+        if (result == NO_RESULT) HudOverrides.of(ctx).setResultText(Component.literal("Game over"));
+        else HudOverrides.of(ctx).setResult(result.winner().orElse(null));
         var players = ctx.server().getPlayerList().getPlayers();
         Titles.showAll(List.copyOf(players), title(result), Component.literal(result.reason()), 10, 70, 20);
         for (Component line : summary(ctx, result)) ctx.server().getPlayerList().broadcastSystemMessage(line, false);

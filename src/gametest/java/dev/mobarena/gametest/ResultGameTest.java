@@ -5,6 +5,7 @@ import dev.mobarena.hud.HudOverrides;
 import dev.mobarena.result.ResultKeys;
 import dev.mobarena.result.ResultModule;
 import dev.mobarena.result.ResultTracker;
+import dev.mobarena.result.SuddenDeathStarter;
 import dev.mobarena.result.Outcome;
 import dev.mobarena.team.TeamId;
 import dev.mobarena.team.TeamManager;
@@ -14,6 +15,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.projectile.FireworkRocketEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.Vec3;
 import java.util.*;
 
 /**
@@ -26,6 +28,7 @@ public class ResultGameTest {
         final GameTestHelper helper;
         final ServerPlayer red, blue;
         final GameContext ctx;
+        private SuddenDeathStarter previousStarter;
         Fixture(GameTestHelper helper) {
             this.helper = helper;
             GameManager game = GameManager.get();
@@ -45,6 +48,16 @@ public class ResultGameTest {
         ResultHooks hooks() { return ctx.get(ResultHooks.KEY); }
         ResultTracker tracker() { return (ResultTracker) ctx.get(ResultHooks.KEY); }
         Phase phase() { return GameManager.get().phase(); }
+        /** Replaces the static sudden death hook until {@link #close()}. */
+        void useStarter(SuddenDeathStarter starter) {
+            if (previousStarter == null) previousStarter = ResultModule.suddenDeathStarter();
+            ResultModule.setSuddenDeathStarter(starter);
+        }
+        /** Moves a player into the loaded test area (relative position). */
+        void place(ServerPlayer player, double x, double y, double z) {
+            Vec3 pos = helper.absoluteVec(new Vec3(x, y, z));
+            player.teleportTo(helper.getLevel(), pos.x, pos.y, pos.z, Set.of(), 0, 0, true);
+        }
         /** Runs a check; on failure the game is stopped first, so later batches start clean. */
         void at(long delay, Runnable check) {
             helper.runAfterDelay(delay, () -> {
@@ -52,6 +65,7 @@ public class ResultGameTest {
             });
         }
         void close() {
+            if (previousStarter != null) { ResultModule.setSuddenDeathStarter(previousStarter); previousStarter = null; }
             GameManager.get().stop();
             TeamManager.get().remove(red);
             TeamManager.get().remove(blue);
@@ -89,13 +103,11 @@ public class ResultGameTest {
     @GameTest(environment = "mobarena:result_sudden_death", maxTicks = 40)
     public void equalEliminationsStartSuddenDeath(GameTestHelper helper) {
         var f = new Fixture(helper);
-        var previous = ResultModule.suddenDeathStarter();
         int[] started = {0};
-        ResultModule.setSuddenDeathStarter((ctx, hooks) -> started[0]++);
+        f.useStarter((ctx, hooks) -> started[0]++);
         f.hooks().teamEliminated(TeamId.RED, progress(1, 5));
         f.hooks().teamEliminated(TeamId.BLUE, progress(1, 5));
         f.at(1, () -> {
-            ResultModule.setSuddenDeathStarter(previous);
             helper.assertTrue(f.phase() == Phase.SUDDEN_DEATH, "Equal progress -> SUDDEN_DEATH, phase " + f.phase());
             helper.assertTrue(started[0] == 1, "Sudden death hook runs once");
             helper.assertTrue(f.tracker().suddenDeathOutcome(TeamId.RED).orElseThrow() instanceof Outcome.Running,
@@ -121,10 +133,17 @@ public class ResultGameTest {
         f.red.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 2));
         f.hooks().teamFinished(TeamId.RED, 100);
         f.hooks().teamEliminated(TeamId.BLUE, progress(2, 4));
-        f.at(1, () -> helper.assertTrue(f.phase() == Phase.END, "Verdict enters END"));
+        f.at(1, () -> {
+            helper.assertTrue(f.phase() == Phase.END, "Verdict enters END");
+            // The lobby moved both players to the lobby spawn; its chunk is not loaded in tests.
+            // This tick runs before the first END tick, so the first fireworks start here.
+            f.place(f.red, 1.5, 2, 1.5);
+            f.place(f.blue, 1.5, 22, 1.5);
+            helper.assertTrue(f.blue.distanceTo(f.red) > 12, "Loser is far from the winner");
+        });
         f.at(3, () -> {
             helper.assertTrue(f.fireworksNear(f.red) > 0, "Fireworks over the winner");
-            helper.assertTrue(f.fireworksNear(f.blue) == 0 || f.blue.distanceTo(f.red) < 12, "No fireworks over the loser");
+            helper.assertTrue(f.fireworksNear(f.blue) == 0, "No fireworks over the loser");
             helper.assertTrue(f.red.getInventory().getItem(0).is(Items.DIAMOND), "T8 does not clear inventories");
         });
         // END starts at the END_SERVER_TICK of tick 0; GameManager.tick of tick endTicks ends it.
@@ -136,15 +155,28 @@ public class ResultGameTest {
         });
     }
 
+    @GameTest(environment = "mobarena:result_admin_skip", maxTicks = 40)
+    public void adminSkipToEndShowsGameOver(GameTestHelper helper) {
+        var f = new Fixture(helper);
+        try {
+            GameManager.get().endPhaseNow();
+            helper.assertTrue(f.phase() == Phase.END, "Skip from ARENA enters END");
+            helper.assertTrue(f.ctx.get(ResultKeys.RESULT) == null, "No verdict, no result");
+            helper.assertTrue(HudOverrides.of(f.ctx).result().text().getString().equals("Game over"),
+                    "Boss bar shows the same text as the title");
+        } finally {
+            f.close();
+        }
+        helper.succeed();
+    }
+
     @GameTest(environment = "mobarena:result_draw", maxTicks = 40)
     public void equalSuddenDeathIsDrawWithoutFireworks(GameTestHelper helper) {
         var f = new Fixture(helper);
-        var previous = ResultModule.suddenDeathStarter();
-        ResultModule.setSuddenDeathStarter((ctx, hooks) -> { });
+        f.useStarter((ctx, hooks) -> { });
         f.hooks().teamFinished(TeamId.RED, 100);
         f.hooks().teamFinished(TeamId.BLUE, 900);
         f.at(1, () -> {
-            ResultModule.setSuddenDeathStarter(previous);
             helper.assertTrue(f.phase() == Phase.SUDDEN_DEATH, "Two finishes -> SUDDEN_DEATH (time ignored)");
             f.hooks().teamEliminated(TeamId.RED, progress(0, 8));
             f.hooks().teamEliminated(TeamId.BLUE, progress(0, 8));
