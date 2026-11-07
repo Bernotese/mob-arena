@@ -33,6 +33,7 @@ public final class MobArena implements ModInitializer {
         // Modules: one init line each (PLAN 2.2). They run after the lobby listener.
         dev.mobarena.randomizer.RandomizerModule.init();
         dev.mobarena.world.WorldModule.init(lobby);
+        dev.mobarena.arena.ArenaModule.init(lobby);
         dev.mobarena.backpack.BackpackModule.init();
         dev.mobarena.wave.WaveModule.init();
         CoreCommands.register(config, lobby);
