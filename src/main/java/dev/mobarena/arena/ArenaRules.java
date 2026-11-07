@@ -74,6 +74,8 @@ final class ArenaRules {
         if (fromDisk || !(entity instanceof Mob mob) || !isArena(level)) return true;
         // Player-built golems and withers do not work in arenas (T7b review decision).
         if (reason == EntitySpawnReason.TRIGGERED && PLAYER_BUILT.contains(entity.getType())) return false;
+        // No random jockeys for wave spawns (T7 decision); WaveSpawner removes the rest.
+        if (reason == EntitySpawnReason.JOCKEY && WaveSpawner.finalizing()) return false;
         if (reason != null) switch (reason) {
             // No natural spawns in arenas; no player mobs from eggs, dispensers or buckets (T7 Q8).
             case NATURAL, CHUNK_GENERATION, PATROL, EVENT, STRUCTURE, SPAWNER, TRIAL_SPAWNER,
