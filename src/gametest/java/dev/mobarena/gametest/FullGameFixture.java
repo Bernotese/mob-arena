@@ -32,7 +32,7 @@ final class FullGameFixture implements AutoCloseable {
         game.stop();
         try { original = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve("mob-arena.json")); }
         catch (IOException e) { throw new IllegalStateException(e); }
-        h.runBeforeTestEnd(this::close);
+        TestEnd.run(h, this::close);
         var config = new MobArenaConfig();
         config.prepTimeSeconds = 60; config.waveConfigTimeSeconds = 30;
         config.waveCountdownSeconds = 3; config.waveCooldownSeconds = 3;

@@ -36,7 +36,7 @@ public class DebugDriverGameTest {
             game.setConfigSource(config::copy);
             try { arena = new ArenaFixture(h, true, false); }
             catch (RuntimeException | Error e) { game.stop(); game.setConfigSource(original::snapshot); throw e; }
-            h.runBeforeTestEnd(this::close);
+            dev.mobarena.gametest.TestEnd.run(h, this::close);
         }
         int command(String text) {
             try { return arena.ctx.server().getCommands().getDispatcher().execute(text, arena.ctx.server().createCommandSourceStack()); }
