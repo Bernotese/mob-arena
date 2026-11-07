@@ -187,4 +187,72 @@ public class WaveCollectionGameTest {
             }
         }h.succeed();
     }
+    private static void endTick(GameContext ctx) {
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.invoker().onEndTick(ctx.server());
+    }
+    private static void join(GameContext ctx,ServerPlayer player) {
+        net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.JOIN.invoker().onPlayReady(player.connection,
+                net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.getSender(player),ctx.server());
+    }
+    @GameTest public void skippedMenuItemIsNotForcedIn(GameTestHelper h) {
+        try(var f=new Fixture(h)) {
+            var inventory=f.red.getInventory();
+            // Keep the backpack (its own restore rule) and fill every other slot.
+            for(int slot=0;slot<36;slot++)
+                if(!dev.mobarena.backpack.GuardedItems.isGuarded(inventory.getItem(slot)))
+                    inventory.setItem(slot,new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND,64));
+            if(dev.mobarena.backpack.GuardedItems.isGuarded(inventory.getItem(8))) {
+                var backpackItem=inventory.getItem(8);inventory.setItem(0,backpackItem);
+            }
+            inventory.setItem(8,new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.EMERALD,7));
+            var backpack=dev.mobarena.backpack.TeamBackpack.get(f.ctx.server()).inventory(TeamId.RED);
+            for(int slot=0;slot<27;slot++) backpack.setItem(slot,new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND,64));
+            h.assertTrue(inventory.getFreeSlot()<0,"Fixture inventory is full");
+            int backpacks=0;
+            for(int slot=0;slot<36;slot++) if(dev.mobarena.backpack.GuardedItems.isGuarded(inventory.getItem(slot))) backpacks++;
+            h.assertTrue(backpacks==1,"Fixture keeps exactly one backpack: "+backpacks);
+            f.game.endPhaseNow();
+            h.assertTrue(!hasMenu(f.red),"Full inventory and backpack skip the menu item");
+            for(int i=0;i<3;i++) endTick(f.ctx);
+            h.assertTrue(!hasMenu(f.red),"Tick end does not force a skipped menu item in");
+            h.assertTrue(inventory.getItem(8).is(net.minecraft.world.item.Items.EMERALD) && inventory.getItem(8).getCount()==7,"Slot nine keeps its stack");
+            int diamonds=0;
+            for(int slot=0;slot<36;slot++) if(inventory.getItem(slot).is(net.minecraft.world.item.Items.DIAMOND)) diamonds++;
+            h.assertTrue(diamonds==34,"No inventory stack was displaced: "+diamonds);
+            var drops=f.red.level().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,f.red.getBoundingBox().inflate(16));
+            h.assertTrue(drops.isEmpty(),"No item is dropped");
+            h.assertTrue(f.ctx.server().getPlayerList().getPlayers().contains(f.mate) && hasMenu(f.mate),"Other players still get the menu item");
+        }h.succeed();
+    }
+    @GameTest public void rejoinedMenuItemOpensMenu(GameTestHelper h) {
+        try(var f=new Fixture(h)) {
+            f.game.endPhaseNow();
+            net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.invoker().onPlayDisconnect(f.red.connection,f.ctx.server());
+            h.assertTrue(!hasMenu(f.red),"Disconnect removes the menu item and its action");
+            join(f.ctx,f.red);
+            h.assertTrue(f.game.phase()==Phase.WAVE_CONFIG,"Rejoin keeps wave setup running");
+            endTick(f.ctx);
+            int slot=-1;
+            for(int i=0;i<f.red.getInventory().getContainerSize();i++) if(WaveMenuItem.isMenu(f.red.getInventory().getItem(i))) slot=i;
+            h.assertTrue(slot>=0,"Restore gives the menu item after rejoin");
+            var stack=f.red.getInventory().getItem(slot);f.red.getInventory().setItem(slot,net.minecraft.world.item.ItemStack.EMPTY);
+            f.red.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,stack);
+            var result=net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.invoker()
+                    .interact(f.red,f.red.level(),net.minecraft.world.InteractionHand.MAIN_HAND);
+            h.assertTrue(result.consumesAction(),"Menu item use is consumed");
+            h.assertTrue(f.red.containerMenu!=f.red.inventoryMenu,"Restored menu item opens the wave menu");
+            f.red.closeContainer();
+        }h.succeed();
+    }
+    @GameTest public void joinRemovesStaleMenuItem(GameTestHelper h) {
+        try(var f=new Fixture(h)) {
+            f.red.getInventory().setItem(20,WaveMenuItem.createStack());
+            join(f.ctx,f.red);
+            h.assertTrue(!hasMenu(f.red),"JOIN in PREP removes a stale menu item");
+            f.game.endPhaseNow();
+            h.assertTrue(hasMenu(f.mate),"Wave setup gives the menu item");
+            join(f.ctx,f.mate);
+            h.assertTrue(hasMenu(f.mate),"JOIN in wave setup keeps the menu item");
+        }h.succeed();
+    }
 }

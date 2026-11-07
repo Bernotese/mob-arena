@@ -17,6 +17,8 @@ Rules for all agents in this project: the main session and the background agents
 - Write the name and version of each new tool or library in your report.
 - Java 25 is in `~/.local/jdks/jdk-25.0.5+8`. Before `./gradlew`, run:
   `export JAVA_HOME=$HOME/.local/jdks/jdk-25.0.5+8 PATH=$HOME/.local/jdks/jdk-25.0.5+8/bin:$PATH`
+- Only one build at a time (7 GB RAM). Always run Gradle through the lock:
+  `flock ~/.gradle/mobarena-build.lock ./gradlew build` (same for `runGameTest`, `runServer`, `test`).
 - `./gradlew build` also runs the GameTests. Report to `orchestrator` with `herdr agent prompt orchestrator "<report>"`.
 
 ## Tests
