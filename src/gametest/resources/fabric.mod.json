@@ -6,7 +6,9 @@
 	"environment": "*",
 	"entrypoints": {
 		"fabric-gametest": [
-			"dev.mobarena.gametest.MobArenaGameTest"
+			"dev.mobarena.gametest.MobArenaGameTest",
+            "dev.mobarena.hud.HudGameTest",
+            "dev.mobarena.config.gui.ConfigGuiGameTest"
 		]
 	},
 	"depends": {

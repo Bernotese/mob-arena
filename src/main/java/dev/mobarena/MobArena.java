@@ -31,6 +31,7 @@ public final class MobArena implements ModInitializer {
         // Register the lobby first. Module listeners run after inventory cleanup.
         GameManager.get().register(lobby);
         CoreCommands.register(config, lobby);
+        dev.mobarena.hud.HudModule.init(config);
         CommandRegistry.initialize();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> { TeamManager.get().initialize(server); lobby.prepare(server); });
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
