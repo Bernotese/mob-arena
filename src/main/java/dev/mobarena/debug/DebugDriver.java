@@ -5,6 +5,9 @@ import dev.mobarena.MobArena;
 import dev.mobarena.arena.*;
 import dev.mobarena.collect.CollectKeys;
 import dev.mobarena.core.*;
+import dev.mobarena.result.Outcome;
+import dev.mobarena.result.ResultKeys;
+import dev.mobarena.result.ResultTracker;
 import dev.mobarena.team.*;
 import dev.mobarena.wave.*;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -91,6 +94,44 @@ public final class DebugDriver {
         if (seconds < 0) throw new IllegalArgumentException("Seconds must be nonnegative");
         ctx.timer().reset(seconds * 20L);
     }
+    /** Per team: {"arena": outcome, "suddenDeath": outcome or null}; null without a ResultTracker. */
+    static JsonElement outcomes(GameContext ctx) {
+        if (ctx == null || !(ctx.get(ResultHooks.KEY) instanceof ResultTracker tracker)) return JsonNull.INSTANCE;
+        var json = new JsonObject();
+        for (var team : TeamId.values()) {
+            var t = new JsonObject();
+            t.add("arena", outcome(tracker.arenaOutcome(team)));
+            t.add("suddenDeath", tracker.suddenDeathOutcome(team).map(DebugDriver::outcome).orElse(JsonNull.INSTANCE));
+            json.add(team.name(), t);
+        }
+        return json;
+    }
+    static JsonElement outcome(Outcome outcome) {
+        var json = new JsonObject();
+        switch (outcome) {
+            case Outcome.Running running -> json.addProperty("type", "RUNNING");
+            case Outcome.Finished finished -> { json.addProperty("type", "FINISHED"); json.addProperty("ticks", finished.ticks()); }
+            case Outcome.Eliminated eliminated -> {
+                json.addProperty("type", "ELIMINATED");
+                json.addProperty("clearedWaves", eliminated.progress().clearedWaves());
+                json.addProperty("killsInCurrentWave", eliminated.progress().killsInCurrentWave());
+                json.addProperty("ticks", eliminated.progress().ticks());
+            }
+        }
+        return json;
+    }
+    /** {"type": PENDING|SUDDEN_DEATH|WIN|DRAW, "winner": team or null, "reason": text or null}; null without a game. */
+    static JsonElement verdict(GameManager game, GameContext ctx) {
+        if (ctx == null) return JsonNull.INSTANCE;
+        var json = new JsonObject();
+        var result = ctx.get(ResultKeys.RESULT);
+        String type = result != null ? (result.winner().isPresent() ? "WIN" : "DRAW")
+                : game.phase() == Phase.SUDDEN_DEATH ? "SUDDEN_DEATH" : "PENDING";
+        json.addProperty("type", type);
+        json.add("winner", result == null || result.winner().isEmpty() ? JsonNull.INSTANCE : new JsonPrimitive(result.winner().get().name()));
+        json.add("reason", result == null ? JsonNull.INSTANCE : new JsonPrimitive(result.reason()));
+        return json;
+    }
     /** Stable JSON fields use ticks for all times. Also emit the script log marker. */
     public static JsonObject state(MinecraftServer server) {
         check();
@@ -118,7 +159,7 @@ public final class DebugDriver {
             battles.add(team.name(), battle == null ? JsonNull.INSTANCE : b);
         }
         json.add("teams", teams); json.add("pools", pools); json.add("plans", plans); json.add("battles", battles);
-        json.add("outcomes", JsonNull.INSTANCE); json.add("verdict", JsonNull.INSTANCE);
+        json.add("outcomes", outcomes(ctx)); json.add("verdict", verdict(game, ctx));
         var levels = new JsonArray();
         for (var level : server.getAllLevels()) levels.add(level.dimension().identifier().toString());
         json.add("openLevels", levels);

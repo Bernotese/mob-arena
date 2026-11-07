@@ -54,6 +54,35 @@ final class WaveMobAi {
         mob.setTarget(target);
     }
 
+    static boolean waveMob(Entity entity) {
+        return WaveTags.isWaveEntity(entity);
+    }
+
+    /**
+     * Every tick: a wave mob never keeps another wave mob as target. Iron golems and others pick any Enemy,
+     * also a mob of the same wave; that would start a fight between wave mobs.
+     */
+    static void dropWaveTargets(ArenaBattle battle) {
+        for (var entity : battle.waveMobs()) {
+            if (!(entity instanceof Mob mob)) continue;
+            boolean invalid = waveMob(mob.getTarget());
+            var brain = mob.getBrain();
+            if (brain.checkMemory(MemoryModuleType.ATTACK_TARGET, MemoryStatus.REGISTERED)
+                    && waveMob(brain.getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null))) {
+                brain.eraseMemory(MemoryModuleType.ATTACK_TARGET);
+                invalid = true;
+            }
+            if (mob instanceof NeutralMob angry && angry.getPersistentAngerTarget() != null
+                    && waveMob(angry.getPersistentAngerTarget().getEntity(mob.level(), LivingEntity.class))) {
+                angry.stopBeingAngry();
+                invalid = true;
+            }
+            if (!invalid) continue;
+            mob.setTarget(null);
+            engage(mob, battle);
+        }
+    }
+
     /** Every 20 ticks: give a new target to wave mobs without a valid one; keep neutral mobs angry. */
     static void retarget(ArenaBattle battle) {
         for (var entity : battle.waveMobs()) {

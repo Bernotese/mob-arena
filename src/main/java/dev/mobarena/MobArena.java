@@ -39,6 +39,7 @@ public final class MobArena implements ModInitializer {
         CoreCommands.register(config, lobby);
         dev.mobarena.hud.HudModule.init(config);
         dev.mobarena.debug.DebugModule.init();
+        dev.mobarena.result.ResultModule.init();
         CommandRegistry.initialize();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> { TeamManager.get().initialize(server); lobby.prepare(server); });
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {

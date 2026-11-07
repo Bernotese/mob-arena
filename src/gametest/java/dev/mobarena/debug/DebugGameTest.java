@@ -47,7 +47,10 @@ public class DebugGameTest {
             h.assertTrue(state.get("phase").getAsString().equals("WAVE_CONFIG"), "State includes phase");
             h.assertTrue(state.getAsJsonObject("pools").get("RED").getAsInt() == 4, "State includes pool total");
             h.assertTrue(state.getAsJsonObject("plans").getAsJsonArray("RED").get(0).getAsJsonObject().get("minecraft:zombie").getAsInt() == 3, "State includes plan");
-            h.assertTrue(state.get("outcomes").isJsonNull() && state.get("verdict").isJsonNull(), "Result placeholders are null");
+            h.assertTrue(state.getAsJsonObject("outcomes").getAsJsonObject("RED").getAsJsonObject("arena").get("type").getAsString().equals("RUNNING")
+                    && state.getAsJsonObject("outcomes").getAsJsonObject("BLUE").get("suddenDeath").isJsonNull(), "Outcomes start as running");
+            h.assertTrue(state.getAsJsonObject("verdict").get("type").getAsString().equals("PENDING")
+                    && state.getAsJsonObject("verdict").get("winner").isJsonNull(), "Verdict is pending");
             h.assertTrue(game.context().get(WaveKeys.SETUPS).get(TeamId.RED).waveTotal(1) == 4, "Driver sets setup");
             try { DebugDriver.waves(TeamId.RED, "zombie:4", "-", "-"); throw new AssertionError("Expected insufficient pool"); }
             catch (IllegalArgumentException expected) { }

@@ -322,4 +322,124 @@ public class ArenaGameTest {
             .thenWaitUntil(() -> h.assertTrue(f.results.contains("finished RED"), "First clear reports finished to the T8 listener"))
             .thenSucceed();
     }
+
+    private static List<? extends net.minecraft.world.entity.monster.cubemob.Slime> slimes(Arena arena) {
+        return arena.level().getEntities(net.minecraft.world.level.entity.EntityTypeTest.forClass(
+                net.minecraft.world.entity.monster.cubemob.Slime.class), e -> !e.isRemoved());
+    }
+
+    @GameTest(environment = "mobarena-gametest:arena_discard", maxTicks = 600, skyAccess = true)
+    public void dyingSlimeOnEliminationOrCloseLeavesNoSlimes(GameTestHelper h) {
+        var f = new ArenaFixture(h, false, true);
+        var red = f.run(TeamId.RED, 1, 20, LONG, LONG, Map.of("minecraft:slime", 1), Map.of(), Map.of());
+        f.run(TeamId.BLUE, 1, 20, LONG, LONG, Map.of("minecraft:slime", 1), Map.of(), Map.of());
+        String redTag = WaveTags.tag(TeamId.RED, 1), blueTag = WaveTags.tag(TeamId.BLUE, 1);
+        h.startSequence()
+            .thenWaitUntil(() -> h.assertTrue(mobs(f.arena(TeamId.RED), redTag).size() == 1
+                    && mobs(f.arena(TeamId.BLUE), blueTag).size() == 1, "Both slimes spawn"))
+            .thenExecute(() -> {
+                // Big dying bodies; vanilla splits them on removal, also on discard().
+                for (net.minecraft.world.entity.monster.cubemob.Slime slime : List.of(slimes(f.arena(TeamId.RED)).getFirst(), slimes(f.arena(TeamId.BLUE)).getFirst())) {
+                    slime.setSize(4, true);
+                    kill(slime, f.red);
+                    h.assertTrue(slime.isDeadOrDying() && !slime.isRemoved(), "Slime body is dying");
+                }
+                killPlayer(f.red);
+            })
+            .thenWaitUntil(() -> h.assertTrue(red.state() == BattleFlow.State.ELIMINATED, "RED is eliminated"))
+            .thenExecute(() -> {
+                h.assertTrue(slimes(f.arena(TeamId.RED)).isEmpty(), "Elimination leaves no slime");
+                f.group().close();
+                h.assertTrue(slimes(f.arena(TeamId.BLUE)).isEmpty(), "Close leaves no slime");
+            })
+            .thenIdle(30)
+            .thenExecute(() -> h.assertTrue(slimes(f.arena(TeamId.RED)).isEmpty() && slimes(f.arena(TeamId.BLUE)).isEmpty(),
+                    "No late split children"))
+            .thenSucceed();
+    }
+
+    @GameTest(environment = "mobarena-gametest:arena_safety", maxTicks = 600, skyAccess = true)
+    public void oldWaveSlimeSplitLeavesNoChildren(GameTestHelper h) {
+        var f = new ArenaFixture(h, false, true);
+        var battle = f.run(TeamId.RED, 1, 20, LONG, LONG, Map.of(ZOMBIE, 1), Map.of(), Map.of());
+        String oldTag = WaveTags.tag(TeamId.RED, 2);
+        h.startSequence()
+            .thenWaitUntil(() -> h.assertTrue(battle.state() == BattleFlow.State.FIGHT, "Wave 1 runs"))
+            .thenExecute(() -> {
+                var level = f.arena(TeamId.RED).level();
+                var slime = EntityTypes.SLIME.create(level, EntitySpawnReason.COMMAND);
+                slime.snapTo(Vec3.atBottomCenterOf(f.arena(TeamId.RED).layout().mobSpawns().get(2)));
+                slime.setSize(4, true);
+                slime.addTag(oldTag);
+                h.assertTrue(level.addFreshEntity(slime), "Slime with a tag of no running wave is added");
+                kill(slime, f.red);
+            })
+            .thenIdle(40)
+            .thenExecute(() -> h.assertTrue(slimes(f.arena(TeamId.RED)).isEmpty(),
+                    "Split children of an old wave mob are discarded, left " + slimes(f.arena(TeamId.RED)).size()))
+            .thenSucceed();
+    }
+
+    @GameTest(environment = "mobarena-gametest:arena_golem", maxTicks = 600, skyAccess = true)
+    public void playerBuiltGolemsAndWithersAreBlocked(GameTestHelper h) {
+        var f = new ArenaFixture(h, false, true);
+        h.startSequence()
+            .thenWaitUntil(() -> h.assertTrue(f.red.level() == f.arena(TeamId.RED).level(), "Arena is ready"))
+            .thenExecute(() -> {
+                var arena = f.arena(TeamId.RED);
+                var level = arena.level();
+                var pos = arena.layout().mobSpawns().get(5);
+                for (var type : List.<EntityType<? extends Mob>>of(EntityTypes.IRON_GOLEM, EntityTypes.SNOW_GOLEM,
+                        EntityTypes.COPPER_GOLEM, EntityTypes.WITHER)) {
+                    var mob = type.create(level, EntitySpawnReason.TRIGGERED);
+                    mob.snapTo(Vec3.atBottomCenterOf(pos));
+                    h.assertTrue(!level.addFreshEntity(mob), "Built " + type.toShortString() + " is blocked");
+                }
+                // A real snow golem pattern: the pumpkin placement triggers the build.
+                level.setBlockAndUpdate(pos, Blocks.SNOW_BLOCK.defaultBlockState());
+                level.setBlockAndUpdate(pos.above(), Blocks.SNOW_BLOCK.defaultBlockState());
+                level.setBlockAndUpdate(pos.above(2), Blocks.CARVED_PUMPKIN.defaultBlockState());
+                h.assertTrue(level.getEntities(net.minecraft.world.level.entity.EntityTypeTest.forClass(
+                        net.minecraft.world.entity.animal.golem.SnowGolem.class), e -> true).isEmpty(), "No snow golem in the arena");
+                var command = EntityTypes.IRON_GOLEM.create(level, EntitySpawnReason.COMMAND);
+                command.snapTo(Vec3.atBottomCenterOf(pos).add(3, 0, 0));
+                h.assertTrue(level.addFreshEntity(command), "Admin summon still works");
+                command.discard();
+            })
+            .thenSucceed();
+    }
+
+    @GameTest(environment = "mobarena-gametest:arena_infight", maxTicks = 600, skyAccess = true)
+    public void waveMobsDoNotFightEachOther(GameTestHelper h) {
+        var f = new ArenaFixture(h, false, true);
+        var battle = f.run(TeamId.RED, 1, 20, LONG, LONG,
+                Map.of("minecraft:iron_golem", 1, "minecraft:zombified_piglin", 2), Map.of(), Map.of());
+        String tag = WaveTags.tag(TeamId.RED, 1);
+        h.startSequence()
+            .thenWaitUntil(() -> h.assertTrue(mobs(f.arena(TeamId.RED), tag).size() == 3, "Golem and 2 zombified piglins spawn"))
+            .thenExecute(() -> {
+                var all = mobs(f.arena(TeamId.RED), tag);
+                var golem = all.stream().filter(m -> m instanceof IronGolem).findFirst().orElseThrow();
+                var piglin = all.stream().filter(m -> !(m instanceof IronGolem)).findFirst().orElseThrow();
+                // An iron golem picks any Enemy as target; setTarget must refuse a wave mob.
+                golem.setTarget(piglin);
+                h.assertTrue(golem.getTarget() != piglin, "Iron golem accepts a wave mob as target");
+                var level = f.arena(TeamId.RED).level();
+                float health = piglin.getHealth();
+                h.assertTrue(!piglin.hurtServer(level, piglin.damageSources().mobAttack(golem), 5) && piglin.getHealth() == health,
+                        "A wave mob cannot hurt a mob of the same wave");
+            })
+            .thenExecuteFor(200, () -> {
+                for (var mob : mobs(f.arena(TeamId.RED), tag)) {
+                    h.assertTrue(!WaveMobAi.waveMob(mob.getTarget()), mob.getType().toShortString() + " targets a wave mob");
+                    h.assertTrue(!WaveMobAi.waveMob(mob.getLastHurtByMob()), mob.getType().toShortString() + " was hurt by a wave mob");
+                    h.assertTrue(mob.getHealth() == mob.getMaxHealth(), mob.getType().toShortString() + " lost health");
+                }
+            })
+            .thenExecute(() -> {
+                for (var mob : mobs(f.arena(TeamId.RED), tag))
+                    h.assertTrue(mob.getTarget() == f.red, mob.getType().toShortString() + " targets RED");
+            })
+            .thenSucceed();
+    }
 }

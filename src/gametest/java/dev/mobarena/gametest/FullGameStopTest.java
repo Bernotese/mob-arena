@@ -3,6 +3,7 @@ package dev.mobarena.gametest;
 import dev.mobarena.arena.*;
 import dev.mobarena.core.Phase;
 import dev.mobarena.debug.DebugDriver;
+import dev.mobarena.result.ResultModule;
 import dev.mobarena.team.TeamId;
 import dev.mobarena.wave.WaveKeys;
 import dev.mobarena.world.*;
@@ -62,9 +63,13 @@ public class FullGameStopTest {
                             && f.battle(TeamId.BLUE).waveMobs().size() == 1, "Both arenas have live wave mobs"));
             if (phase == Phase.SUDDEN_DEATH) {
                 sequence.thenExecute(f.check(() -> {
-                    f.game.enterSuddenDeath();
-                    // T8b is absent from this branch. Use the public T7 runner directly.
-                    ArenaPhaseListener.startSuddenDeath(f.ctx, BattleListener.resultHooks(f.ctx));
+                    // Real path: enterSuddenDeath -> ResultModule sudden death starter.
+                    // TODO(T8b part 2): remove this test starter when T8b part 2 installs the real one.
+                    var previous = ResultModule.suddenDeathStarter();
+                    ResultModule.setSuddenDeathStarter((ctx, hooks) -> ArenaPhaseListener.startSuddenDeath(ctx, BattleListener.resultHooks(ctx)));
+                    try { f.game.enterSuddenDeath(); }
+                    finally { ResultModule.setSuddenDeathStarter(previous); }
+                    h.assertTrue(f.game.phase() == Phase.SUDDEN_DEATH, "enterSuddenDeath reaches SUDDEN_DEATH");
                 })).thenWaitUntil(() -> h.assertTrue(f.battle(TeamId.RED).waveMobs().size() == 3
                         && f.battle(TeamId.BLUE).waveMobs().size() == 3, "Sudden death has live combined waves"));
             } else if (phase == Phase.END) sequence.thenExecute(f.check(f.game::finish));

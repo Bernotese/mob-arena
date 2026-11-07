@@ -75,6 +75,7 @@ public final class ArenaBattle {
                 spawningDone = queue.spawningDone();
             }
         }
+        if (ready && currentTag != null) WaveMobAi.dropWaveTargets(this);
         if (ready && currentTag != null && now % 20 == 0) WaveMobAi.retarget(this);
         if (ready && now % 5 == 0) ArenaBounds.check(this);
         boolean wasWaiting = flow.state() == BattleFlow.State.WAITING_ARENA;
@@ -178,7 +179,13 @@ public final class ArenaBattle {
         if (arena == null) return;
         String prefix = WaveTags.teamPrefix(team);
         for (var entity : arena.level().getEntities(EntityTypeTest.forClass(net.minecraft.world.entity.Entity.class),
-                e -> e.entityTags().stream().anyMatch(t -> t.startsWith(prefix)))) entity.discard();
+                e -> e.entityTags().stream().anyMatch(t -> t.startsWith(prefix)))) discardNoSplit(entity);
+    }
+
+    /** discard() of a dying slime or magma cube splits it (AbstractCubeMob.remove), so shrink it first. */
+    static void discardNoSplit(net.minecraft.world.entity.Entity entity) {
+        if (entity instanceof net.minecraft.world.entity.monster.cubemob.AbstractCubeMob cube) cube.setSize(1, false);
+        entity.discard();
     }
 
     void stop() {
