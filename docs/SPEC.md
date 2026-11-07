@@ -19,12 +19,14 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - A team player that disconnects and joins again goes back to the team position. If the player was in the arena, the player gets the respawn timer. **[DEFAULT]**
 
 ## 3. Preparation phase (`PREP`)
-- Default duration: 20 min (`prepTimeSeconds = 1200`).
+- Default duration: 45 min (`prepTimeSeconds = 2700`).
 - At game start, the mod makes a new random seed. Both teams get a new world with this seed. One world per team.
 - The worlds are new each game. The mod deletes the old worlds at game end.
-- Team dimensions: each team has its own overworld **and its own Nether** (same seed for both teams).
+- Team dimensions: each team has its own overworld, its own Nether **and its own End** (same seed for both teams).
   - A Nether portal in the team overworld links only to the team Nether, and back.
-  - The End is not accessible in version 1. End portals do nothing. **[DEFAULT]**
+  - An End portal in the team overworld links only to the team End. The End exit portal goes back to the team overworld.
+  - The Ender Dragon spawns in the team End as normal, but it does not count as a kill (section 3.1). **[DEFAULT]**
+- Portals in the lobby and in the arenas do nothing.
 - Players start at the world spawn with an empty inventory, full health, and full hunger. Game mode: survival.
 - `keepInventory` is on in all game worlds.
 - Death in `PREP`: the player respawns at the team world spawn (or at the bed). No timer. **[DEFAULT]**
@@ -153,7 +155,7 @@ Root: `/mobarena`, alias `/ma`.
 
 | Key | Type | Default |
 |---|---|---|
-| `prepTimeSeconds` | int | 1200 |
+| `prepTimeSeconds` | int | 2700 |
 | `waveConfigTimeSeconds` | int | 180 |
 | `waveCountdownSeconds` | int | 10 |
 | `waveCooldownSeconds` | int | 20 |

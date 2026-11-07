@@ -93,12 +93,12 @@ Status is tracked by `orchestrator`. Each task: owner type, dependencies, done c
 
 ### Phase 2 – Game content (start after T2 is merged)
 **T5 – Worlds** (Claude plans, Codex implements). Depends on T2.
-- Prep worlds with Fantasy: per team one overworld and one Nether, same seed for both teams, keep inventory on. Delete at game end.
-- Nether portals link only inside the team (overworld <-> team Nether). End portals do nothing.
+- Prep worlds with Fantasy: per team one overworld, one Nether and one End, same seed for both teams, keep inventory on. Delete at game end.
+- Portals link only inside the team (overworld <-> team Nether, overworld -> team End, End exit -> team overworld). Dragon fight works in the team End.
 - Risk from T0: game rules can be global only in 26.3. Test per-level rules first.
 - Arena worlds: void world per team, paste the template, fixed time, no weather, no sun burn for undead.
 - `DefaultArenaBuilder`: round arena, radius ~30, stone floor, some cover, 1 water basin, barrier wall and roof, spawn ring markers.
-- Done: GameTest or `runServer` test: `/ma start` makes 4 prep worlds (2 overworlds, 2 Nethers) with the same seed. A portal in team RED goes to the RED Nether. Arena paste works. `/ma stop` deletes all game worlds.
+- Done: GameTest or `runServer` test: `/ma start` makes 6 prep worlds (overworld, Nether, End per team) with the same seed. A portal in team RED goes to the RED Nether. Arena paste works. `/ma stop` deletes all game worlds.
 
 **T6 – Mob collection + wave config** (Claude plans, Codex implements). Depends on T2. Can run with T5.
 - `KillAttribution` (SPEC 3.1), `MobPool` per team, action bar message.
@@ -122,7 +122,7 @@ Status is tracked by `orchestrator`. Each task: owner type, dependencies, done c
 - Play a full game on `runServer` with short config times (prep 60 s, config 30 s). Use 2 offline-mode clients if possible, or GameTest fake players.
 - Write a bug list. `orchestrator` sends fixes as small tasks.
 
-**T11 – Later features** (not in version 1): End per team, mob variants, stats screen.
+**T11 – Later features** (not in version 1): mob variants, stats screen.
 
 ## 4. Order and parallel work
 ```
