@@ -1,0 +1,17 @@
+Known bug: immediate server stop after /ma stop, following a RED Nether portal and Carpet death/rejoin.
+Command: python3 tools/smoke.py --spike
+Minecraft 26.3; Carpet 26.3+v260915; Fantasy 0.8.4+26.3; Temurin 25.0.5+8.
+The strict smoke checker failed. Gradle runServer itself returned success.
+
+[11:21:39] [IO-Worker-9/ERROR] (Minecraft) Could not schedule ConsecutiveExecutor
+
+java.util.concurrent.RejectedExecutionException: Task IOWorker-chunk RUNNING false rejected from java.util.concurrent.ThreadPoolExecutor@7418d76e[Shutting down, pool size = 1, active threads = 1, queued tasks = 0, completed tasks = 48049]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$AbortPolicy.rejectedExecution(ThreadPoolExecutor.java:2032)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.reject(ThreadPoolExecutor.java:787)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.execute(ThreadPoolExecutor.java:1328)
+	at knot//net.minecraft.TracingExecutor.execute(TracingExecutor.java:36)
+	at knot//net.minecraft.util.thread.AbstractConsecutiveExecutor.registerForExecution(AbstractConsecutiveExecutor.java:94)
+	at knot//net.minecraft.util.thread.AbstractConsecutiveExecutor.run(AbstractConsecutiveExecutor.java:63)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1090)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:614)
+	at java.base/java.lang.Thread.run(Thread.java:1474)
