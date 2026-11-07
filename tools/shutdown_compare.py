@@ -51,9 +51,10 @@ def main():
                 else:
                     smoke.run(log_name=log_name, **options)
             except Exception as error:
-                failure = str(error)
+                failure = str(error).replace(str(smoke.ROOT) + '/', '')
                 traceback.print_exc(file=output)
-        text = (smoke.RUN / log_name).read_text(errors='replace')
+        log_path = smoke.RUN / log_name
+        text = log_path.read_text(errors='replace') if log_path.exists() else ''
         driver = driver_log.read_text(errors='replace')
         match = re.search(r'(?m)^.*\[.*ERROR\].*\n(?:.*\n)*?(?=^\[|\Z)', text)
         if match:

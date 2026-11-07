@@ -173,18 +173,18 @@ def run(*, game=True, spike=False, portal_only=False, cleanup_delay=0, log_name=
             probe.bind(('127.0.0.1', port))
     setup()
     env = os.environ.copy()
-    java = Path.home() / '.local/jdks/jdk-25.0.5+8'
-    env.update(JAVA_HOME=str(java), PATH=f'{java}/bin:{env["PATH"]}')
     log = RUN / log_name
     rcon = None
-    print(f'Waiting for the shared Gradle lock. Server log: {log}', flush=True)
+    print(f'Waiting for a shared Gradle build slot. Server log: {log.relative_to(ROOT)}', flush=True)
     with log.open('w') as output:
-        process = subprocess.Popen(['flock', str(Path.home() / '.gradle/mobarena-build.lock'),
-                                    './gradlew', '--console=plain', 'runServer'], cwd=ROOT,
+        # tools/gradle.sh sets Java 25 and waits for one of the shared build slots.
+        process = subprocess.Popen([str(ROOT / 'tools/gradle.sh'), '--console=plain', 'runServer'], cwd=ROOT,
                                    env=env, stdin=subprocess.PIPE, stdout=output, stderr=subprocess.STDOUT,
                                    start_new_session=True)
         try:
-            wait_log(log, r'RCON running on', process, timeout=None)
+            # Wait without a limit only for the build slot; a hung startup must still fail.
+            wait_log(log, r'Starting minecraft server', process, timeout=None)
+            wait_log(log, r'RCON running on', process, timeout=180)
             rcon = Rcon()
             check_startup_cleanup()
             if game:
@@ -200,13 +200,17 @@ def run(*, game=True, spike=False, portal_only=False, cleanup_delay=0, log_name=
                     process.wait(timeout=90)
                 except subprocess.TimeoutExpired:
                     os.killpg(process.pid, signal.SIGTERM)
-                    process.wait(timeout=30)
+                    try:
+                        process.wait(timeout=30)
+                    except subprocess.TimeoutExpired:
+                        os.killpg(process.pid, signal.SIGKILL)
+                        process.wait()
             if rcon:
                 rcon.sock.close()
     for server_log in (log, RUN / 'logs/latest.log'):
-        text = server_log.read_text(errors='replace')
+        text = server_log.read_text(errors='replace') if server_log.exists() else ''
         if re.search(r'Exception|\bERROR\b|Caused by:', text):
-            raise AssertionError(f'Server log contains an exception or error: {server_log}')
+            raise AssertionError(f'Server log contains an exception or error: {server_log.relative_to(ROOT)}')
     if process.returncode:
         raise RuntimeError(f'Server exit status: {process.returncode}')
     print('PASS: Server scenario and clean server log.')
