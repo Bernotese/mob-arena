@@ -117,3 +117,8 @@ gui.setSlot(i, GuiElementBuilder.from(eggStack).setName(name)
 - No blocker. Fantasy and sgui both have a 26.3 build.
 - Risk: per-level game rules in 26.3 (global game rules exist). Fantasy has `DelegatingGameRules` / `GameRuleStore`, so per-level rules are probably OK. T5 must test.
 - Risk: GameTest setup (module not in the main jar). T1 must test.
+
+## Corrections (from T7b, 2026-11-07)
+- The 26.3 entity tag getter is `entityTags()`, not `getTags()`.
+- Entity type constants are in `EntityTypes`.
+- Mock/test players stay invulnerable until `handleAcceptPlayerLoad` and `hasChangedDimension` are called (`connection.hasClientLoaded()` is false, `isChangingDimension` stays set after a teleport).
