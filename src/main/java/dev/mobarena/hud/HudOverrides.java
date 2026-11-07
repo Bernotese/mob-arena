@@ -36,5 +36,7 @@ public final class HudOverrides {
         result = new HudLine(Component.literal(winner == null ? "Draw" : "Team " + winner + " wins"), 1,
                 winner == null ? BossBarColor.WHITE : winner == TeamId.RED ? BossBarColor.RED : BossBarColor.BLUE);
     }
+    /** End text without a winner and without a draw, for example after an admin skip to END. */
+    public void setResultText(Component text) { result = new HudLine(text, 1, BossBarColor.WHITE); }
     public HudLine result() { return result; }
 }
