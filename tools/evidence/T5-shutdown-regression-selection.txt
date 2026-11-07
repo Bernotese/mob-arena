@@ -1,6 +1,12 @@
-Filtered regression attempt before the fix. No tests ran.
-JAVA_TOOL_OPTIONS=-Dfabric-api.gametest.filter=*removednethercloseschunkworker
-flock ~/.gradle/mobarena-build.lock ./gradlew runGameTest
+Regression selection. Without a namespace, the matcher uses "minecraft:" and finds no tests.
+Fabric names tests <mod id>:<camel_to_snake(ClassName + "_" + method)>.
+JAVA_TOOL_OPTIONS='-Dfabric-api.gametest.filter=mobarena-gametest:*removed_nether_closes_chunk_worker' tools/gradle.sh runGameTest
 
-[11:45:35] [Server thread/WARN] (Minecraft) Test selection matcher (*removednethercloseschunkworker) found no tests
+Before the fix (fix stashed, base a740204):
+[13:34:50] Will run tests matching mobarena-gametest:*removed_nether_closes_chunk_worker (1 tests)
+[13:34:52] mobarena-gametest:world_game_test_removed_nether_closes_chunk_worker failed ... Removed Nether closes its chunk I/O worker on tick 402
+[13:34:52] 1 required tests failed :(
 
+After the fix:
+[13:35:40] Will run tests matching mobarena-gametest:*removed_nether_closes_chunk_worker (1 tests)
+[13:35:42] All 1 required tests passed :)

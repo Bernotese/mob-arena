@@ -109,6 +109,31 @@ public class WorldGameTest {
         });
     }
 
+    @GameTest(environment = "mobarena:world_cleanup", maxTicks = 400)
+    public void removedLevelFolderStaysDeleted(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var level = LevelFactory.open(server, 43, TeamId.RED, WorldKind.PREP_OVERWORLD).asLevel();
+        // Dirty several chunks so their saves are queued while Fantasy deletes the level.
+        for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++) {
+            level.setBlock(new net.minecraft.core.BlockPos(x * 16 + 8, 200, z * 16 + 8),
+                    net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(), 3);
+        }
+        var folder = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                .resolve("dimensions/mobarena").resolve(level.dimension().identifier().getPath());
+        WorldCleanup.clean(server);
+        // A late chunk write must not recreate the folder after deletion.
+        helper.onEachTick(() -> {
+            if (server.getLevel(level.dimension()) == null) {
+                helper.assertFalse(java.nio.file.Files.exists(folder), "Deleted level folder is not recreated");
+            }
+        });
+        helper.runAfterDelay(250, () -> {
+            helper.assertTrue(server.getLevel(level.dimension()) == null, "Level leaves the server level map");
+            helper.assertFalse(java.nio.file.Files.exists(folder), "Level folder stays deleted");
+            helper.succeed();
+        });
+    }
+
     private static void mappedBlockDrop(GameTestHelper helper, dev.mobarena.core.GameContext ctx) {
         var level = ctx.prepLevel(TeamId.RED);
         var pos = ctx.get(TeamWorlds.KEY).get(TeamId.RED).prepSpawn().offset(4, 0, 4);

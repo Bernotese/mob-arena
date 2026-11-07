@@ -48,16 +48,20 @@ Keep the existing startup removal of owned crash folders.
 
 ## Results
 
-Paused before the production fix.
-Case 4 passed twice before the fix, with clean logs.
-The next-start check after the first case 4 run passed.
-Case 5 and the final cleanup startup have not run.
-The comparison script and its queued lock request were stopped for the restart.
-No other agent process was stopped.
+Fix: `WorldCleanup.onUnload` (Fabric `ServerLevelEvents.UNLOAD`) closes a tracked game level only after Fantasy removed it from the server map.
+Fantasy fires UNLOAD after `Map.remove` and before `FileUtils.deleteDirectory` (checked in bytecode).
+`IOWorker.close` waits for pending writes, then closes region storage, so no queued write can run after the delete.
+Levels that are still in the map are not closed; vanilla closes them.
 
-The new regression compiled, but the filter `*removednethercloseschunkworker` selected no tests.
-It has not yet demonstrated the expected failure. Correct the selection before rerunning it.
-The selection failure is saved in `tools/evidence/T5-shutdown-regression-selection.txt`.
+| Check | Before fix | After fix |
+|---|---|---|
+| Case 4, portal/rejoin + 10 s wait | PASS 2/2 | not run |
+| Case 5, portal only + immediate stop | PASS 2/2 | not run |
+| Case 3, portal/rejoin + immediate stop | FAIL 1/1, RejectedExecutionException | PASS 3/3, no exception, folders clean on next start |
+| GameTest `removed_nether_closes_chunk_worker` | FAIL (worker open) | PASS |
+| GameTest `removed_level_folder_stays_deleted` | PASS 2/2 | PASS |
+| Full build | - | PASS (96 unit, all GameTests) |
 
-Resume with case 5 and the regression selection.
-Then implement the unload close, apply the requested tool fixes, and run the build and three case 3 checks.
+Case 5 shows that the portal alone does not trigger the race; the death/rejoin step is necessary.
+The folder test does not reproduce a late write before the fix. It is a guard only.
+Evidence: `tools/evidence/T5-shutdown-{before,baseline,after}-*` and `T5-shutdown-regression-selection.txt`.

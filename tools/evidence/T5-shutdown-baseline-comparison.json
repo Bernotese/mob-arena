@@ -1,0 +1,16 @@
+[
+  {
+    "case": "3-portal-rejoin-immediate-1",
+    "result": "FAIL",
+    "startup_clean": true,
+    "rejected_execution": true,
+    "error": "Server log contains an exception or error: run/compare-T5-shutdown-baseline-3-portal-rejoin-immediate-1.log"
+  },
+  {
+    "case": "final-cleanup-check",
+    "result": "PASS",
+    "startup_clean": true,
+    "rejected_execution": false,
+    "error": ""
+  }
+]
