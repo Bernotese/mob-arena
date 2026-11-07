@@ -72,7 +72,7 @@ def main():
         clean = rows[index + 1]['startup_clean']
         lines.append(f"| {row['case']} | {row['result']} | {'yes' if row['rejected_execution'] else 'no'} | {'yes' if clean else 'NO'} |")
     lines += ['', f"Final default smoke: {rows[-1]['result']}.", '', 'The checker rejects every exception and ERROR entry.',
-              'Each run uses the shared Gradle lock.',
+              'Each run uses a shared Gradle build slot (tools/gradle.sh).',
               'The final default smoke checks cleanup after the last comparison run.', '']
     report = '\n'.join(lines)
     (EVIDENCE / f'{args.label}-comparison.md').write_text(report)
