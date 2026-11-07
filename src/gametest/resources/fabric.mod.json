@@ -17,7 +17,8 @@
       "dev.mobarena.backpack.BackpackGuardGameTest",
       "dev.mobarena.backpack.BackpackLifecycleGameTest",
       "dev.mobarena.world.WorldGameTest",
-      "dev.mobarena.arena.ArenaGameTest"
+      "dev.mobarena.arena.ArenaGameTest",
+      "dev.mobarena.debug.DebugGameTest"
     ]
   },
   "depends": {
