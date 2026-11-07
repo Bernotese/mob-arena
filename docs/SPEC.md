@@ -46,7 +46,7 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - At game start, the mod makes one item map per team: `Map<Item, Item>`. Map RED and map BLUE are different. Both are new each game.
 - The map is not balanced. Any item can map to any item (for example `oak_log` -> `iron_ingot`).
 - Pool: all items in the item registry, minus `air`, items that need operator permission (command blocks, structure blocks, jigsaw, debug stick, barrier, light), and `bedrock`. Spawn eggs are in the pool.
-- The map applies to **all items that drop** in the team worlds (overworld and Nether):
+- The map applies to **all items that drop** in all team prep worlds (overworld, Nether and End):
   - Block drops, mob drops (loot and equipment), chest loot, fishing, shearing, piglin bartering, and all other loot tables.
   - The world tells the team, not the player. Thus explosions and other non-player breaks also use the team map.
 - Exceptions (not randomized):
