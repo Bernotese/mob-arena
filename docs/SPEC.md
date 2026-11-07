@@ -118,7 +118,7 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - Players of an eliminated team become spectators and teleport to the arena of the other team to watch. **[DEFAULT]**
 
 ## 8. Win rules
-Progress of a team = (highest cleared wave, then number of killed mobs in the current wave, then time).
+Progress of a team = (highest cleared wave, then number of killed mobs in the current wave). Time is never a tie breaker.
 1. If one team finishes all 3 waves and the other team is eliminated: the finished team wins.
 2. If one team is eliminated, the other team continues. If it finishes, it wins. If it is also eliminated, the team with more progress wins.
 3. If both teams are eliminated with equal progress (wave and kills): sudden death. **[DEFAULT]**
