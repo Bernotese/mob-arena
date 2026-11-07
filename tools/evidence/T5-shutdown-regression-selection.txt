@@ -1,0 +1,6 @@
+Filtered regression attempt before the fix. No tests ran.
+JAVA_TOOL_OPTIONS=-Dfabric-api.gametest.filter=*removednethercloseschunkworker
+flock ~/.gradle/mobarena-build.lock ./gradlew runGameTest
+
+[11:45:35] [Server thread/WARN] (Minecraft) Test selection matcher (*removednethercloseschunkworker) found no tests
+

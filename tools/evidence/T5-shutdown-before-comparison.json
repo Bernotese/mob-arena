@@ -1,0 +1,16 @@
+[
+  {
+    "case": "4-portal-rejoin-wait-10s-1",
+    "result": "PASS",
+    "startup_clean": true,
+    "rejected_execution": false,
+    "error": ""
+  },
+  {
+    "case": "4-portal-rejoin-wait-10s-2",
+    "result": "PASS",
+    "startup_clean": true,
+    "rejected_execution": false,
+    "error": ""
+  }
+]

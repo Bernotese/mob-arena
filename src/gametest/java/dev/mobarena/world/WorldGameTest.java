@@ -91,6 +91,27 @@ public class WorldGameTest {
             }));
         });
     }
+    @GameTest(environment = "mobarena:world_cleanup", maxTicks = 400)
+    public void removedNetherClosesChunkWorker(GameTestHelper helper) throws Exception {
+        var server = helper.getLevel().getServer();
+        var level = LevelFactory.open(server, 42, TeamId.RED, WorldKind.PREP_NETHER).asLevel();
+        var worker = (net.minecraft.world.level.chunk.storage.IOWorker) level.getChunkSource().chunkMap.chunkScanner();
+        // Observe the real worker lifecycle; deletion alone previously left this flag false.
+        var field = worker.getClass().getDeclaredField("shutdownRequested");
+        field.setAccessible(true);
+        var closed = (java.util.concurrent.atomic.AtomicBoolean) field.get(worker);
+        helper.assertFalse(closed.get(), "New chunk worker is open");
+        level.getChunk(0, 0);
+        var folder = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                .resolve("dimensions/mobarena").resolve(level.dimension().identifier().getPath());
+        WorldCleanup.clean(server);
+        helper.succeedWhen(() -> {
+            helper.assertTrue(server.getLevel(level.dimension()) == null, "Nether leaves the server level map");
+            helper.assertTrue(closed.get(), "Removed Nether closes its chunk I/O worker");
+            helper.assertFalse(java.nio.file.Files.exists(folder), "Closed Nether folder is deleted");
+        });
+    }
+
     private static void mappedBlockDrop(GameTestHelper helper, dev.mobarena.core.GameContext ctx) {
         var level = ctx.prepLevel(TeamId.RED);
         var pos = ctx.get(TeamWorlds.KEY).get(TeamId.RED).prepSpawn().offset(4, 0, 4);

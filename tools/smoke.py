@@ -118,7 +118,7 @@ def check_startup_cleanup():
     print('PASS: No Mob Arena level folders after startup.', flush=True)
 
 
-def run_scenario(rcon, log, process, *, spike=False):
+def run_scenario(rcon, log, process, *, spike=False, portal_only=False):
     cmd = rcon.command
     for key, value in TIMES.items():
         cmd(f'ma config set {key} {value}', 'Config saved')
@@ -151,20 +151,21 @@ def run_scenario(rcon, log, process, *, spike=False):
             if time.monotonic() > deadline:
                 raise AssertionError('Fake player did not enter the RED Nether')
             time.sleep(0.5)
-        cmd('gamemode survival red1')
-        time.sleep(4)
-        death_offset = len(log.read_text())
-        cmd('damage red1 100 minecraft:generic_kill', 'Applied')
-        wait_log(log, r'red1 left the game', process, offset=death_offset)
-        cmd('player red1 spawn')
-        wait_log(log, r'red1 joined the game', process, timeout=90, offset=death_offset)
-        cmd('data get entity red1 Health', '20.0f')
-        print('PASS: Carpet death, command rejoin, RED Nether portal.')
+        if not portal_only:
+            cmd('gamemode survival red1')
+            time.sleep(4)
+            death_offset = len(log.read_text())
+            cmd('damage red1 100 minecraft:generic_kill', 'Applied')
+            wait_log(log, r'red1 left the game', process, offset=death_offset)
+            cmd('player red1 spawn')
+            wait_log(log, r'red1 joined the game', process, timeout=90, offset=death_offset)
+            cmd('data get entity red1 Health', '20.0f')
+        print('PASS: RED Nether portal' + ('.' if portal_only else ', Carpet death, and rejoin.'))
     cmd('ma stop', 'Game stopped')
     cmd('ma status', 'Phase: LOBBY')
 
 
-def run(*, game=True, spike=False, cleanup_delay=0, log_name='smoke-console.log'):
+def run(*, game=True, spike=False, portal_only=False, cleanup_delay=0, log_name='smoke-console.log'):
     # Refuse an existing server before changing its local files.
     for port in (25565, 25575):
         with socket.socket() as probe:
@@ -187,7 +188,7 @@ def run(*, game=True, spike=False, cleanup_delay=0, log_name='smoke-console.log'
             rcon = Rcon()
             check_startup_cleanup()
             if game:
-                run_scenario(rcon, log, process, spike=spike)
+                run_scenario(rcon, log, process, spike=spike, portal_only=portal_only)
                 if cleanup_delay:
                     time.sleep(cleanup_delay)
         finally:
