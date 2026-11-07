@@ -22,7 +22,9 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - Default duration: 20 min (`prepTimeSeconds = 1200`).
 - At game start, the mod makes a new random seed. Both teams get a new world with this seed. One world per team.
 - The worlds are new each game. The mod deletes the old worlds at game end.
-- Team dimensions: overworld only in version 1. Nether and End per team are a later feature (`prepDimensions` config). **[DEFAULT]**
+- Team dimensions: each team has its own overworld **and its own Nether** (same seed for both teams).
+  - A Nether portal in the team overworld links only to the team Nether, and back.
+  - The End is not accessible in version 1. End portals do nothing. **[DEFAULT]**
 - Players start at the world spawn with an empty inventory, full health, and full hunger. Game mode: survival.
 - `keepInventory` is on in all game worlds.
 - Death in `PREP`: the player respawns at the team world spawn (or at the bed). No timer. **[DEFAULT]**
@@ -31,7 +33,7 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 ### 3.1 Mob collection
 - A mob counts for team X if a player of team X kills it. Kills by a projectile, a tamed animal, or a trap (fire, lava, fall) after a hit by a team player in the last 10 s also count. **[DEFAULT]**
 - All living mobs that have a spawn egg count, also passive mobs ("friendly creatures").
-- Blacklist (config `mobBlacklist`, default: `ender_dragon`, `wither`, `player`, `armor_stand`). **[DEFAULT]**
+- Blacklist (config `mobBlacklist`, default: `ender_dragon`, `player`, `armor_stand`, `cod`, `salmon`, `tropical_fish`, `pufferfish`). Fish do not count. The Wither counts.
 - Baby mobs count as the same type. Mob variants (for example sheep color) are not saved in version 1.
 - Slime and magma cube splits: each killed slime counts with its own size as 1 slime. **[DEFAULT]**
 - After each kill, the killer sees an action bar message: `+1 Zombie (total 14)`.
@@ -42,9 +44,13 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - At game start, the mod makes one item map per team: `Map<Item, Item>`. Map RED and map BLUE are different. Both are new each game.
 - The map is not balanced. Any item can map to any item (for example `oak_log` -> `iron_ingot`).
 - Pool: all items in the item registry, minus `air`, items that need operator permission (command blocks, structure blocks, jigsaw, debug stick, barrier, light), and `bedrock`. Spawn eggs are in the pool.
-- The map applies to **block drops** in the team world. The world tells the team, not the player. Thus explosions and other non-player breaks also use the team map.
+- The map applies to **all items that drop** in the team worlds (overworld and Nether):
+  - Block drops, mob drops (loot and equipment), chest loot, fishing, shearing, piglin bartering, and all other loot tables.
+  - The world tells the team, not the player. Thus explosions and other non-player breaks also use the team map.
+- Exceptions (not randomized):
+  - Items dropped by players (drop key, death, full inventory).
+  - Villager and wandering trader trades.
 - Each dropped stack keeps its count. The mod caps the count at the max stack size of the new item.
-- Mob drops are not randomized in version 1 (`randomizeMobDrops = false`). **[DEFAULT]**
 - Mobs from a randomized spawn egg count as normal kills when a team player kills them.
 
 ## 5. Team backpack
@@ -73,7 +79,7 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - Template source: `config/mob-arena/arenas/<name>.nbt` (structure file). If no file exists, the mod builds a simple default arena from code. **[DEFAULT]**
 - The arena has: a team spawn point at the center, a ring of mob spawn points around the arena, a barrier wall and a barrier roof as the outer border.
 - Players and mobs can destroy the arena. There are no repairs between waves. Players can place blocks.
-- The arena world has a fixed time (noon) and no weather. Undead mobs do not burn in the sun in arena worlds. **[DEFAULT]**
+- The arena world has a fixed time (noon) and no weather. Undead mobs do not burn in the sun in arena worlds.
 
 ### 7.2 Flow
 1. All team players teleport to the team spawn point. Inventory, health and items stay as they were at the end of `PREP` (keep inventory). Health and hunger are filled.
@@ -91,7 +97,7 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - Children of wave mobs (slime splits, and similar) get the same tag. They must also die.
 - Mobs that leave the arena bounds teleport back to a spawn point.
 - After 60 s in a wave (`mobGlowAfterSeconds`), all remaining wave mobs get the glowing effect.
-- Water mobs spawn in a water basin of the arena. If the arena has no basin, they spawn in a 1-block water source at the spawn point. **[DEFAULT]**
+- Fish do not count (section 3.1), so they never spawn. Other water mobs (squid, dolphin, guardian, axolotl, and others) spawn in a water basin of the arena. If the arena has no basin, they spawn in a 1-block water source at the spawn point. **[DEFAULT]**
 
 ### 7.4 Wave time limit
 - Each wave has a max time: 5 min (`waveMaxTimeSeconds = 300`).
@@ -157,7 +163,5 @@ Root: `/mobarena`, alias `/ma`.
 | `mobGlowAfterSeconds` | int | 60 |
 | `endScreenSeconds` | int | 15 |
 | `randomizerEnabled` | bool | true |
-| `randomizeMobDrops` | bool | false |
-| `mobBlacklist` | list of entity ids | `ender_dragon, wither, player, armor_stand` |
+| `mobBlacklist` | list of entity ids | `ender_dragon, player, armor_stand, cod, salmon, tropical_fish, pufferfish` |
 | `arenaTemplate` | string | `default` |
-| `prepDimensions` | enum `OVERWORLD` | `OVERWORLD` |

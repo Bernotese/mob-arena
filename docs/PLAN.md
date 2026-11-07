@@ -1,17 +1,17 @@
 # Mob Arena – Implementation Plan
 
-Read `AGENTS.md` and `docs/SPEC.md` first. This file tells how we build the mod and who does which task.
+Read `AGENTS.md`, `docs/SPEC.md` and `docs/TECH.md` (versions, 26.3 API names) first. This file tells how we build the mod and who does which task.
 
 ## 1. Tech stack
 | Item | Choice | Note |
 |---|---|---|
 | Minecraft | Java Edition 26.3 | Code is not obfuscated since 26.1. Use Mojang names. |
 | Java | 25 (Eclipse Temurin) | Not installed yet. Install it (see task T1). |
-| Loader | Fabric Loader (latest stable, 0.19.x) | Stable for 26.3. NeoForge 26.3 is still beta. |
-| Build | Fabric Loom 1.17, Gradle 9.6 (wrapper) | Check the latest versions on fabricmc.net/develop. |
-| API | Fabric API for 26.3 | Events, commands, loot, GameTest. |
-| Runtime worlds | `xyz.nucleoid:fantasy` | Makes and deletes worlds at runtime. Check 26.3 support (task T0). |
-| Chest menus | `eu.pb4:sgui` | Server-side GUIs. Check 26.3 support (task T0). |
+| Loader | Fabric Loader 0.20.1 | Stable for 26.3. NeoForge 26.3 is still beta. |
+| Build | Fabric Loom 1.19.4, Gradle 9.9.0 (wrapper) | Do not use Loom 1.20 (alpha). |
+| API | Fabric API 0.165.2+26.3 | Events, commands, loot, GameTest. |
+| Runtime worlds | `xyz.nucleoid:fantasy` 0.8.4+26.3 | Makes and deletes worlds at runtime. |
+| Chest menus | `eu.pb4:sgui` 2.2.1+26.3 | Server-side GUIs. |
 | Tests | JUnit 5 + Fabric GameTest | See section 5. |
 
 - Mod id: `mobarena`. Base package: `dev.mobarena`.
@@ -66,6 +66,7 @@ Status is tracked by `orchestrator`. Each task: owner type, dependencies, done c
 
 **T1 – Project scaffold** (Codex). No dependencies (T0 can run at the same time).
 - Install Temurin JDK 25 (user-local install is OK). Report the version.
+- Use the versions in `docs/TECH.md`. T0 says: `fabric-gametest-api-v1` is not in the fabric-api jar, and the Loom DSL for unobfuscated MC is not verified. Test both.
 - Make a Fabric mod project: Gradle wrapper, Loom, `fabric.mod.json`, `MobArena` entrypoint, the package tree from section 2 (empty `package-info.java` files), JUnit 5, Fabric GameTest setup.
 - Add `./gradlew runServer` config with `eula=true` and `online-mode=false` in `run/` (local only, in `.gitignore`).
 - Done: `./gradlew build` passes, `./gradlew runServer` starts and logs `Mob Arena loaded`, one example JUnit test and one example GameTest pass.
@@ -80,9 +81,10 @@ Status is tracked by `orchestrator`. Each task: owner type, dependencies, done c
 
 **T3 – Item randomizer** (Codex). Depends on T1. Can run with T2.
 - `ItemRandomizer`: builds `Map<Item,Item>` from a seed and an item list. Pure logic for the shuffle.
-- Hook: block loot in a world that belongs to a team uses the team map (SPEC section 4).
+- Hook: all loot in a world that belongs to a team uses the team map (SPEC section 4): all loot tables (`LootTableEvents.MODIFY_DROPS`) and mob equipment drops (mixin if no event).
+- Do not touch player drops and villager/wandering trader trades. Add a test for each exception.
 - Until T5 exists: use a test hook that maps a given `ServerLevel` to a team.
-- Done: unit tests (same seed -> same map, different team -> different map, blacklist excluded, stack cap). GameTest: break a block in a mapped level, check the drop.
+- Done: unit tests (same seed -> same map, different team -> different map, blacklist excluded, stack cap). GameTests: block drop, mob drop and chest loot are mapped; player drop is not mapped.
 
 **T4 – Team backpack** (Codex). Depends on T1. Can run with T2.
 - SPEC section 5. Shared `SimpleContainer` per team, live sync to all viewers, guards against drop/move/storage.
@@ -90,10 +92,12 @@ Status is tracked by `orchestrator`. Each task: owner type, dependencies, done c
 
 ### Phase 2 – Game content (start after T2 is merged)
 **T5 – Worlds** (Claude plans, Codex implements). Depends on T2.
-- Prep worlds with Fantasy: one per team, same seed, overworld generator, keep inventory on. Delete at game end.
+- Prep worlds with Fantasy: per team one overworld and one Nether, same seed for both teams, keep inventory on. Delete at game end.
+- Nether portals link only inside the team (overworld <-> team Nether). End portals do nothing.
+- Risk from T0: game rules can be global only in 26.3. Test per-level rules first.
 - Arena worlds: void world per team, paste the template, fixed time, no weather, no sun burn for undead.
 - `DefaultArenaBuilder`: round arena, radius ~30, stone floor, some cover, 1 water basin, barrier wall and roof, spawn ring markers.
-- Done: GameTest or `runServer` test: `/ma start` makes 2 prep worlds with the same seed. Arena paste works. `/ma stop` deletes all game worlds.
+- Done: GameTest or `runServer` test: `/ma start` makes 4 prep worlds (2 overworlds, 2 Nethers) with the same seed. A portal in team RED goes to the RED Nether. Arena paste works. `/ma stop` deletes all game worlds.
 
 **T6 – Mob collection + wave config** (Claude plans, Codex implements). Depends on T2. Can run with T5.
 - `KillAttribution` (SPEC 3.1), `MobPool` per team, action bar message.
@@ -117,7 +121,7 @@ Status is tracked by `orchestrator`. Each task: owner type, dependencies, done c
 - Play a full game on `runServer` with short config times (prep 60 s, config 30 s). Use 2 offline-mode clients if possible, or GameTest fake players.
 - Write a bug list. `orchestrator` sends fixes as small tasks.
 
-**T11 – Later features** (not in version 1): Nether/End per team, mob variants, randomized mob drops, stats screen.
+**T11 – Later features** (not in version 1): End per team, mob variants, stats screen.
 
 ## 4. Order and parallel work
 ```
