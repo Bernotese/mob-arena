@@ -33,7 +33,10 @@ abstract class EndPortalBlockMixin {
             target = "Lnet/minecraft/server/MinecraftServer;getLevel(Lnet/minecraft/resources/ResourceKey;)Lnet/minecraft/server/level/ServerLevel;"))
     private ServerLevel mobarena$destination(MinecraftServer server, ResourceKey<Level> key,
             Operation<ServerLevel> original, @Local(argsOnly = true) ServerLevel source) {
-        return GameLevels.isPrepLevel(source) ? PortalKeys.teamLevel(source, key) : original.call(server, key);
+        if ("mobarena".equals(source.dimension().identifier().getNamespace())) {
+            return GameLevels.isPrepLevel(source) ? PortalKeys.teamLevel(source, key) : null;
+        }
+        return original.call(server, key);
     }
     @WrapOperation(method = "getPortalDestination", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/world/level/storage/LevelData$RespawnData;pos()Lnet/minecraft/core/BlockPos;"))

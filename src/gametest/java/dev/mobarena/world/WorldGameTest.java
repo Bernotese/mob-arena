@@ -9,6 +9,10 @@ public class WorldGameTest {
     @GameTest
     public void w2IndependentGameRules(GameTestHelper helper) {
         var server = helper.getLevel().getServer();
+        for (var kind : WorldKind.values()) {
+            if (kind == WorldKind.ARENA) helper.assertTrue(kind.vanillaKey() == null, "Arena has no vanilla key");
+            else helper.assertValueEqual(PortalLink.kindFor(kind.vanillaKey()), kind, "Vanilla keys map to their prep kinds");
+        }
         boolean original = server.getGlobalGameRules().get(GameRules.KEEP_INVENTORY);
         try {
             for (WorldKind kind : WorldKind.values()) {
@@ -31,14 +35,17 @@ public class WorldGameTest {
         helper.succeed();
     }
 
-    @GameTest(maxTicks = 1200)
+    @GameTest(maxTicks = 1600, skyAccess = true)
     public void w1PrepAndW11Cleanup(GameTestHelper helper) {
         var server = helper.getLevel().getServer();
-        // Wait until Fantasy removes the first test level before using the same names again.
+        // Other module tests are synchronous. Start this lifecycle test after their initial tick.
         helper.runAfterDelay(2, () -> {
+            var settings = new WorldTestSettings(server);
+            helper.runBeforeTestEnd(settings::close);
+            StructureWorldChecks.verify(helper);
             var game = dev.mobarena.core.GameManager.get();
-            var redPlayer = helper.makeMockServerPlayerInLevel();
-            var bluePlayer = helper.makeMockServerPlayerInLevel();
+            var redPlayer = WorldTestPlayers.create(helper);
+            var bluePlayer = WorldTestPlayers.create(helper);
             var teams = java.util.Map.of(redPlayer.getUUID(), TeamId.RED, bluePlayer.getUUID(), TeamId.BLUE);
             helper.assertTrue(game.start(server, teams, teams.keySet()), "First game starts");
             var ctx = game.context();
@@ -58,9 +65,14 @@ public class WorldGameTest {
                         red.overworld().asLevel().getBlockState(new net.minecraft.core.BlockPos(x, y, z)),
                         blue.overworld().asLevel().getBlockState(new net.minecraft.core.BlockPos(x, y, z)), "Equal terrain");
             }
-            PortalWorldChecks.verify(helper, ctx, redPlayer, bluePlayer);
+            var players = PortalWorldChecks.verify(helper, ctx, redPlayer, bluePlayer);
+            rejoin(helper, ctx, players[0]);
+            mappedBlockDrop(helper, ctx);
+            ArenaWorldChecks.verify(helper, ctx, players[0], () -> EndWorldChecks.verify(helper, ctx, players[0], players[1], () -> {
             var keys = worlds.values().stream().flatMap(TeamWorlds::handles).map(h -> h.getRegistryKey()).toList();
             game.stop();
+            helper.assertTrue(players[0].getRespawnConfig() == null && players[1].getRespawnConfig() == null,
+                    "LOBBY clears beds in deleted levels");
             helper.assertTrue(game.start(server, teams, teams.keySet()), "New game starts in same tick as stop");
             var second = game.context().get(TeamWorlds.KEY);
             var secondKeys = second.values().stream().flatMap(TeamWorlds::handles).map(h -> h.getRegistryKey()).toList();
@@ -76,6 +88,43 @@ public class WorldGameTest {
                 }
                 helper.succeed();
             });
+            }));
         });
+    }
+    private static void mappedBlockDrop(GameTestHelper helper, dev.mobarena.core.GameContext ctx) {
+        var level = ctx.prepLevel(TeamId.RED);
+        var pos = ctx.get(TeamWorlds.KEY).get(TeamId.RED).prepSpawn().offset(4, 0, 4);
+        level.setBlockAndUpdate(pos, net.minecraft.world.level.block.Blocks.OAK_LOG.defaultBlockState());
+        var expected = dev.mobarena.randomizer.RandomizerModule.hook().mapFor("RED").get(net.minecraft.world.item.Items.OAK_LOG);
+        helper.assertTrue(expected != null, "PREP starts the RED randomizer map");
+        level.destroyBlock(pos, true);
+        helper.assertTrue(!level.getEntities(net.minecraft.world.entity.EntityTypes.ITEM,
+                new net.minecraft.world.phys.AABB(pos).inflate(3), item -> item.getItem().is(expected)).isEmpty(),
+                "RED prep block drops the RED-mapped item");
+    }
+    private static void rejoin(GameTestHelper h, dev.mobarena.core.GameContext ctx,
+                               net.minecraft.server.level.ServerPlayer player) {
+        java.nio.file.Path file = null;
+        try {
+            file = java.nio.file.Files.createTempFile("mobarena-rejoin-", ".json");
+            java.nio.file.Files.delete(file);
+            var lobby = new dev.mobarena.core.LobbyManager(file);
+            lobby.prepare(ctx.server());
+            WorldModule.registerRejoinRouting(lobby);
+            var world = ctx.get(TeamWorlds.KEY).get(ctx.team(player.getUUID()));
+            lobby.join(player);
+            h.assertTrue(player.level() == world.overworld().asLevel(), "PREP rejoin chooses own world");
+            h.assertTrue(player.position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(world.prepSpawn())) < 1,
+                    "PREP rejoin without return uses team spawn");
+            var saved = net.minecraft.world.phys.Vec3.atBottomCenterOf(world.prepSpawn().offset(30, 5, 30));
+            player.teleportTo(saved.x, saved.y, saved.z);
+            lobby.leave(player);
+            WorldModule.rememberPrepReturn(ctx, player);
+            lobby.sendToLobby(player, false);
+            lobby.join(player);
+            h.assertTrue(player.position().distanceTo(saved) < 1, "PREP rejoin preserves a saved return position");
+        } catch (java.io.IOException e) { throw new IllegalStateException(e); }
+        finally { if (file != null) try { java.nio.file.Files.deleteIfExists(file); }
+            catch (java.io.IOException e) { throw new IllegalStateException(e); } }
     }
 }

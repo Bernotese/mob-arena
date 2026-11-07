@@ -13,6 +13,7 @@ public final class GameLevels {
     private GameLevels() {}
 
     public static void register(TeamId team, WorldKind kind, ServerLevel level) {
+        LEVELS.values().removeIf(entry -> entry.level().getServer().getLevel(entry.level().dimension()) != entry.level());
         if (level(team, kind) != null || LEVELS.containsKey(level.dimension())) {
             throw new IllegalStateException("Duplicate game level");
         }

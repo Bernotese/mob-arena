@@ -10,6 +10,8 @@ import java.util.*;
 
 public final class PrepWorldManager implements PhaseListener {
     public static Map<TeamId, TeamWorlds> create(GameContext ctx) {
+        // A shutdown can clear the context without phase callbacks. Retire its handles first.
+        WorldCleanup.clean(ctx.server());
         Map<TeamId, TeamWorlds> teams = new EnumMap<>(TeamId.class);
         ctx.put(TeamWorlds.KEY, teams);
         try {
@@ -36,6 +38,10 @@ public final class PrepWorldManager implements PhaseListener {
         if (phase != Phase.PREP || ctx.server() == null) return;
         try {
             var worlds = create(ctx);
+            dev.mobarena.randomizer.RandomizerModule.hook().startGame(ctx.seed(),
+                    java.util.Arrays.stream(TeamId.values()).map(TeamId::name).toList(),
+                    level -> GameLevels.isPrepLevel(level) ? GameLevels.teamOf(level).map(TeamId::name)
+                            : java.util.Optional.empty(), ctx.config().randomizerEnabled());
             for (var player : ctx.server().getPlayerList().getPlayers()) {
                 var team = ctx.team(player.getUUID());
                 if (team == null) continue;
