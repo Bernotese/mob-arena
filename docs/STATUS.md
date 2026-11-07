@@ -1,7 +1,7 @@
 # Status (2026-11-07, 16:00 UTC)
 
 ## Version 1: code complete on main
-All tasks T0–T10 are merged. `main` build: 105 unit tests, 119 GameTests (about 1.5 min). CI on GitHub runs the same build.
+All tasks T0–T10 are merged. `main` build: 105 unit tests, 121 GameTests (about 1.5 min). CI on GitHub runs the same build.
 Smoke runs on runServer with Carpet (tools/smoke.py s1, s15, s16): PASS.
 
 Merged after the first pause:
@@ -11,14 +11,15 @@ Merged after the first pause:
 - Fixes found by the tests: shutdown race (close removed levels), fast close (no 30 s freeze at game end), async game start, structure cache crash and same-seed structure lock, teleport support block, no random jockeys in waves.
 
 ## Open
-- claude-2: chicken jockey flag follow-up (small).
 - User: manual test with a real client, see docs/MANUAL-TEST.md.
 - Possible later: sounds (the mod plays none now), T11 features (mob variants, stats screen).
 
 ## Open user questions
 - Ender Dragon in each team End spawns but does not count (default).
 - Defaults: maxAliveMobs 150 with a queue; eliminated players spectate the other arena.
-- Rules set by the orchestrator: player-built golems and withers are blocked in arenas; waves have no random jockeys.
+- User decision: player-built golems and withers are allowed in arenas and are not wave mobs.
+- Rule set by the orchestrator: waves have no random jockeys.
+- Golems summoned by a wave villager are wave mobs (summon rule); built golems stay until the arena is deleted.
 
 ## Notes
 - Run Gradle with tools/gradle.sh (Java 25, max 3 builds at a time).
