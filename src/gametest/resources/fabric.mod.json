@@ -22,6 +22,7 @@
       "dev.mobarena.world.StartPrepGameTest",
       "dev.mobarena.gametest.TeleportSupportGameTest",
       "dev.mobarena.arena.ArenaGameTest",
+      "dev.mobarena.arena.NoJockeyGameTest",
       "dev.mobarena.debug.DebugGameTest",
       "dev.mobarena.gametest.FullGameTest",
       "dev.mobarena.gametest.FullGameStopTest",

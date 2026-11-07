@@ -39,18 +39,39 @@ final class WaveSpawner {
         }
         Vec3 pos = position(level, arena, order, type);
         mob.snapTo(pos.x, pos.y, pos.z, level.getRandom().nextFloat() * 360, 0);
-        mob.finalizeSpawn(level, level.getCurrentDifficultyAt(BlockPos.containing(pos)), EntitySpawnReason.MOB_SUMMONED, null);
-        // Jockeys from finalizeSpawn are passengers; they are wave mobs too.
-        var members = new ArrayList<Entity>();
-        members.add(mob);
-        mob.getIndirectPassengers().forEach(members::add);
-        for (var member : members) prepare(member, battle, battle.currentTag());
+        FINALIZING.set(true);
+        try { mob.finalizeSpawn(level, level.getCurrentDifficultyAt(BlockPos.containing(pos)), EntitySpawnReason.MOB_SUMMONED, null); }
+        finally { FINALIZING.remove(); }
+        removeJockeys(level, mob);
+        prepare(mob, battle, battle.currentTag());
         if (!level.tryAddFreshEntityWithPassengers(mob)) {
             MobArena.LOGGER.warn("Cannot add wave mob {}", order.entityId());
             return false;
         }
-        for (var member : members) if (member instanceof Mob m) WaveMobAi.engage(m, battle);
+        WaveMobAi.engage(mob, battle);
         return true;
+    }
+
+    /** True while a wave mob runs finalizeSpawn; ArenaRules then refuses JOCKEY spawns. */
+    private static final ThreadLocal<Boolean> FINALIZING = ThreadLocal.withInitial(() -> false);
+    static boolean finalizing() { return FINALIZING.get(); }
+
+    /**
+     * T7 decision: a team fights exactly the collected mobs. finalizeSpawn can add random jockeys:
+     * a new chicken under a baby zombie (added to the level at once with reason JOCKEY, refused by
+     * ArenaRules), a skeleton on a spider, or a rider on a strider (passengers, not yet in the level).
+     * A baby zombie can also mount a chicken nearby. Undo all of it before the mob is added.
+     */
+    private static void removeJockeys(ServerLevel level, Mob mob) {
+        var vehicle = mob.getVehicle();
+        if (vehicle != null) {
+            mob.stopRiding();
+            // A refused new chicken is not in the level; a chicken that was already there stays.
+            if (level.getEntity(vehicle.getUUID()) != vehicle) vehicle.discard();
+        }
+        var passengers = new ArrayList<Entity>();
+        mob.getIndirectPassengers().forEach(passengers::add);
+        for (var passenger : passengers) { passenger.ejectPassengers(); passenger.stopRiding(); passenger.discard(); }
     }
 
     /** Tag, persistence, follow range, glow. Used for spawns and for children. */
