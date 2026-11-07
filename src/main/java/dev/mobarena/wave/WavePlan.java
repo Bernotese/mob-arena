@@ -1,9 +1,10 @@
 package dev.mobarena.wave;
 
 import java.util.*;
+import dev.mobarena.team.TeamId;
 
-/** The enemy of author fights these waves. A is the caller's team identifier type. */
-public record WavePlan<A>(A author, List<SortedMap<String, Integer>> waves) {
+/** The enemy of author fights these waves. */
+public record WavePlan(TeamId author, List<SortedMap<String, Integer>> waves) {
     public WavePlan {
         Objects.requireNonNull(author);
         if (waves.size() != WaveSetup.WAVES) throw new IllegalArgumentException("Exactly three waves required");

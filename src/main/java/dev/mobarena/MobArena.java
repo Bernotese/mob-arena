@@ -34,6 +34,7 @@ public final class MobArena implements ModInitializer {
         dev.mobarena.randomizer.RandomizerModule.init();
         dev.mobarena.world.WorldModule.init(lobby);
         dev.mobarena.backpack.BackpackModule.init();
+        dev.mobarena.wave.WaveModule.init();
         CoreCommands.register(config, lobby);
         dev.mobarena.hud.HudModule.init(config);
         CommandRegistry.initialize();
