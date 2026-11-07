@@ -32,6 +32,7 @@ public final class MobArena implements ModInitializer {
         GameManager.get().register(lobby);
         // Modules: one init line each (PLAN 2.2). They run after the lobby listener.
         dev.mobarena.randomizer.RandomizerModule.init();
+        dev.mobarena.wave.WaveModule.init();
         CoreCommands.register(config, lobby);
         CommandRegistry.initialize();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> { TeamManager.get().initialize(server); lobby.prepare(server); });
