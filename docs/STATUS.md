@@ -27,5 +27,5 @@ Plans: T8b part 2 (docs/plans/T8.md section 7 + decisions), T7 decisions after t
 
 ## Notes
 - build/run/gameTest/world is kept between runs; old item drops there can break drop checks. Delete it before a build (or filter drops to test items).
-- Only one Gradle build at a time: `flock ~/.gradle/mobarena-build.lock ./gradlew ...` (AGENTS.md).
-- Codex 5h limit was almost empty at the pause.
+- Only one Gradle build at a time: `tools/gradle.sh (3 build slots, AGENTS.md).
+- Machine after restart: 8 cores, 30 GB RAM.
