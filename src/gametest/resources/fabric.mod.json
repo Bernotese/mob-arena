@@ -1,16 +1,19 @@
 {
-	"schemaVersion": 1,
-	"id": "mobarena-gametest",
-	"version": "1.0.0",
-	"name": "Mob Arena GameTests",
-	"environment": "*",
-	"entrypoints": {
-		"fabric-gametest": [
-			"dev.mobarena.gametest.MobArenaGameTest",
-            "dev.mobarena.world.WorldGameTest"
-		]
-	},
-	"depends": {
-		"mobarena": "*"
-	}
+  "schemaVersion": 1,
+  "id": "mobarena-gametest",
+  "version": "1.0.0",
+  "name": "Mob Arena GameTests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": [
+      "dev.mobarena.gametest.MobArenaGameTest",
+      "dev.mobarena.gametest.CoreGameTest",
+      "dev.mobarena.gametest.LobbyGameTest",
+      "dev.mobarena.randomizer.RandomizerGameTest",
+      "dev.mobarena.world.WorldGameTest"
+    ]
+  },
+  "depends": {
+    "mobarena": "*"
+  }
 }

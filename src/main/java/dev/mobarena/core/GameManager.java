@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 import java.util.function.Function;
 import java.util.function.Consumer;
 import dev.mobarena.MobArena;
-/** Server thread only. Listeners run in registration order. */
+/** Server thread only. Listeners run in registration order. Nested calls keep the last transition, but LOBBY has priority. */
 public final class GameManager {
     private static final GameManager INSTANCE = new GameManager();
     private final List<PhaseListener> listeners = new ArrayList<>();
@@ -33,7 +33,7 @@ public final class GameManager {
     public GameContext context() { return context; }
     public void setConfigSource(Supplier<MobArenaConfig> source) { config = source; }
     public boolean start(MinecraftServer server, Map<UUID, TeamId> teams, Set<UUID> online) {
-        if (phase != Phase.LOBBY) return false;
+        if (phase != Phase.LOBBY || context != null || transitioning) return false;
         for (TeamId team : TeamId.values()) if (online.stream().noneMatch(id -> teams.get(id) == team)) return false;
         context = new GameContext(server, new Random().nextLong(), teams, config.get());
         context.put(ResultHooks.KEY, Objects.requireNonNull(resultHooks.apply(context)));
@@ -59,17 +59,24 @@ public final class GameManager {
             case END -> transition(Phase.LOBBY);
         }
     }
+    /** Server shutdown: dispose state without phase callbacks or player teleports. */
+    public void shutdown() {
+        if (context != null) context.clear();
+        context = null; phase = Phase.LOBBY; pending = null;
+    }
     public void stop() { if (context != null) transition(Phase.LOBBY); }
     public void enterSuddenDeath() { if (phase == Phase.ARENA) transition(Phase.SUDDEN_DEATH); }
     public void finish() { if (context != null && phase != Phase.END) transition(Phase.END); }
+    /** Nested calls keep the last request, but a queued LOBBY cannot be replaced. */
     private void transition(Phase next) {
-        if (transitioning) { pending = next; return; }
+        if (transitioning) { if (pending != Phase.LOBBY) pending = next; return; }
         if (context == null) return;
+        MobArenaConfig.Snapshot nextConfig = config.get().snapshot();
         transitioning = true;
         try {
             notifyListeners("exit", listener -> listener.onExit(phase, context));
             phase = next;
-            context.setConfig(config.get());
+            context.setConfig(nextConfig);
             MobArenaConfig.Snapshot c = context.config();
             long seconds = switch (next) {
                 case PREP -> c.prepTimeSeconds();

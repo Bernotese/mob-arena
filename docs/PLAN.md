@@ -36,7 +36,7 @@ dev.mobarena
 ├── arena/                     T7: ArenaBattle, WaveSpawner, WaveMobAi, ArenaBounds, RespawnManager
 ├── result/                    T8: ProgressTracker, WinResolver (pure logic), SuddenDeath, EndSequence
 ├── hud/                       T9: BossBarHud, ActionBar, Titles
-└── mixin/                     Only if no Fabric event exists. Each mixin file names its owner task in a comment.
+(mixins: dev.mobarena.<module>.mixin, see 2.2)
 ```
 
 ### 2.1 Core contracts (made in T2, then frozen)
@@ -45,12 +45,20 @@ Other modules use only these types from `core`. A change to them needs a review 
 - `interface PhaseListener { void onEnter(Phase p, GameContext ctx); void onExit(Phase p, GameContext ctx); void onTick(Phase p, GameContext ctx); }`
 - `GameManager.register(PhaseListener)`, `GameManager.endPhaseNow()`, `GameManager.get()`.
 - `GameContext`: game seed, `TeamId` per player, `ServerLevel` per team (prep and arena), phase timer, config snapshot.
+- Config: `ctx.config()` returns an immutable `MobArenaConfig.Snapshot` record (one per phase). Read values with accessors, for example `ctx.config().prepTimeSeconds()`. `MobArenaConfig` is only the editable JSON model (config commands, config GUI).
+- `record TeamProgress(int clearedWaves, int killsInCurrentWave, long ticks)` in `core`. `ResultHooks` uses it. `ResultHooks.KEY` is set at `start()`.
+- `GameManager` and `GameContext` are for the server thread only. Phase changes during a phase change are queued.
 - `GameContext` has a typed attachment map: `ctx.get(Key<T>)` / `ctx.put(Key<T>, T)`. Modules keep their game state there (for example `MobPool`). All state is gone at game end.
 - `ArenaBattle` (T7) calls `ResultHooks.teamFinished(team, timeTicks)` and `ResultHooks.teamEliminated(team, progress)`. `result` (T8) implements these hooks. T2 makes the empty interface.
 
 ### 2.2 Rules for all code
 - Keep logic that does not need Minecraft in plain Java classes (randomizer map, wave split, win rules, team shuffle). Unit-test these classes.
 - Use Fabric API events first. Use a mixin only when no event exists. Explain each mixin in one comment line.
+- Shared files (rule for all tasks):
+  - Mixins: put them in `dev.mobarena.<module>.mixin`. Each module has its own config `src/main/resources/mobarena.<module>.mixins.json`. Add one line for it to the `mixins` array in `fabric.mod.json`.
+  - Entrypoint: each module has `<Module>Module.init()`. Add one call line to `MobArena.onInitialize`.
+  - GameTests: add your test class to the `fabric-gametest` entrypoint list in `src/gametest/resources/fabric.mod.json`.
+  - Do not change other lines in these shared files. `orchestrator` fixes merge conflicts in these files.
 - All timers count server ticks. Do not use wall-clock time for game logic.
 - No client-side code. All text uses `Component` with plain colors (no resource pack).
 - Log with SLF4J, logger name `mobarena`.
