@@ -22,11 +22,15 @@ final class FullGameFixture implements AutoCloseable {
     final MinecraftServer server;
     final GameManager game = GameManager.get();
     final List<ServerPlayer> players = new ArrayList<>();
+    /** redMate and blueMate are null in a 1v1 fixture. */
     final ServerPlayer red, redMate, blue, blueMate;
     final ConfigStore original;
     GameContext ctx;
 
-    FullGameFixture(GameTestHelper h, boolean start) {
+    FullGameFixture(GameTestHelper h, boolean start) { this(h, start, 2); }
+
+    FullGameFixture(GameTestHelper h, boolean start, int perTeam) {
+        if (perTeam < 1 || perTeam > 2) throw new IllegalArgumentException("1 or 2 players per team");
         this.h = h; server = h.getLevel().getServer();
         if (active != null) active.close();
         game.stop();
@@ -43,17 +47,24 @@ final class FullGameFixture implements AutoCloseable {
         config.endScreenSeconds = 5; config.maxAliveMobs = 20;
         game.setConfigSource(config::copy);
         BackpackModule.useGameAccess();
-        red = player(); redMate = player(); blue = player(); blueMate = player();
-        TeamManager.get().assign(red, TeamId.RED); TeamManager.get().assign(redMate, TeamId.RED);
-        TeamManager.get().assign(blue, TeamId.BLUE); TeamManager.get().assign(blueMate, TeamId.BLUE);
+        red = player(); redMate = perTeam == 2 ? player() : null;
+        blue = player(); blueMate = perTeam == 2 ? player() : null;
+        var teams = new HashMap<UUID, TeamId>();
+        for (var p : teamPlayers()) {
+            TeamId team = p == red || p == redMate ? TeamId.RED : TeamId.BLUE;
+            TeamManager.get().assign(p, team);
+            teams.put(p.getUUID(), team);
+        }
         active = this;
         if (start) {
-            var teams = Map.of(red.getUUID(), TeamId.RED, redMate.getUUID(), TeamId.RED,
-                    blue.getUUID(), TeamId.BLUE, blueMate.getUUID(), TeamId.BLUE);
-            h.assertTrue(game.start(server, teams, teams.keySet()), "Full game starts with two players per team");
+            h.assertTrue(game.start(server, teams, teams.keySet()), "Full game starts with " + perTeam + " players per team");
             ctx = game.context();
             h.assertTrue(game.phase() == Phase.PREP && ctx != null, "Real PREP listeners complete");
         }
+    }
+    /** The assigned team players (no late joiners). */
+    List<ServerPlayer> teamPlayers() {
+        return java.util.stream.Stream.of(red, redMate, blue, blueMate).filter(Objects::nonNull).toList();
     }
     ServerPlayer player() { var p = TestPlayers.create(h); players.add(p); return p; }
     void command(String command, ServerPlayer player) {
@@ -80,7 +91,7 @@ final class FullGameFixture implements AutoCloseable {
     ArenaBattle battle(TeamId team) { return ArenaBattles.get(ctx).battle(team); }
     void arenaReady() {
         h.assertTrue(game.phase() == Phase.ARENA, "Game remains in ARENA");
-        for (var p : List.of(red, redMate, blue, blueMate)) {
+        for (var p : teamPlayers()) {
             var battle = battle(ctx.team(p.getUUID()));
             h.assertTrue(battle != null && battle.running() && p.level() == ctx.arenaLevel(ctx.team(p.getUUID())),
                     "Team player enters a running arena");

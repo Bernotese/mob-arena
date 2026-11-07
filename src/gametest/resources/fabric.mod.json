@@ -22,8 +22,9 @@
       "dev.mobarena.gametest.FullGameTest",
       "dev.mobarena.gametest.FullGameStopTest",
       "dev.mobarena.arena.DebugDriverGameTest",
-      "dev.mobarena.arena.SuddenDeathGameTest",
-      "dev.mobarena.gametest.ResultGameTest"
+      "dev.mobarena.gametest.ResultGameTest",
+      "dev.mobarena.gametest.FullResultTest",
+      "dev.mobarena.arena.SuddenDeathGameTest"
     ]
   },
   "depends": {

@@ -10,9 +10,13 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import static net.minecraft.commands.Commands.*;
 
 public final class HudModule {
+    private static BossBarHud hud;
     private HudModule() {}
+    /** The boss bars of the running server; null before init. */
+    public static BossBarHud bossBars() { return hud; }
     public static void init(ConfigStore store) {
         var hud = new BossBarHud();
+        HudModule.hud = hud;
         var menus = new ConfigGuiHub(store);
         GameManager.get().register(hud);
         GameManager.get().register(new PhaseListener() {
