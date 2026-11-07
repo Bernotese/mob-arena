@@ -1,0 +1,12 @@
+[13:33:04] [IO-Worker-9/ERROR] (Minecraft) Could not schedule ConsecutiveExecutor
+
+java.util.concurrent.RejectedExecutionException: Task IOWorker-chunk RUNNING false rejected from java.util.concurrent.ThreadPoolExecutor@2f9a10df[Shutting down, pool size = 1, active threads = 1, queued tasks = 0, completed tasks = 68578]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$AbortPolicy.rejectedExecution(ThreadPoolExecutor.java:2032)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.reject(ThreadPoolExecutor.java:787)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.execute(ThreadPoolExecutor.java:1328)
+	at knot//net.minecraft.TracingExecutor.execute(TracingExecutor.java:36)
+	at knot//net.minecraft.util.thread.AbstractConsecutiveExecutor.registerForExecution(AbstractConsecutiveExecutor.java:94)
+	at knot//net.minecraft.util.thread.AbstractConsecutiveExecutor.run(AbstractConsecutiveExecutor.java:63)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1090)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:614)
+	at java.base/java.lang.Thread.run(Thread.java:1474)

@@ -118,7 +118,7 @@ def check_startup_cleanup():
     print('PASS: No Mob Arena level folders after startup.', flush=True)
 
 
-def run_scenario(rcon, log, process, *, spike=False):
+def run_scenario(rcon, log, process, *, spike=False, portal_only=False):
     cmd = rcon.command
     for key, value in TIMES.items():
         cmd(f'ma config set {key} {value}', 'Config saved')
@@ -151,20 +151,21 @@ def run_scenario(rcon, log, process, *, spike=False):
             if time.monotonic() > deadline:
                 raise AssertionError('Fake player did not enter the RED Nether')
             time.sleep(0.5)
-        cmd('gamemode survival red1')
-        time.sleep(4)
-        death_offset = len(log.read_text())
-        cmd('damage red1 100 minecraft:generic_kill', 'Applied')
-        wait_log(log, r'red1 left the game', process, offset=death_offset)
-        cmd('player red1 spawn')
-        wait_log(log, r'red1 joined the game', process, timeout=90, offset=death_offset)
-        cmd('data get entity red1 Health', '20.0f')
-        print('PASS: Carpet death, command rejoin, RED Nether portal.')
+        if not portal_only:
+            cmd('gamemode survival red1')
+            time.sleep(4)
+            death_offset = len(log.read_text())
+            cmd('damage red1 100 minecraft:generic_kill', 'Applied')
+            wait_log(log, r'red1 left the game', process, offset=death_offset)
+            cmd('player red1 spawn')
+            wait_log(log, r'red1 joined the game', process, timeout=90, offset=death_offset)
+            cmd('data get entity red1 Health', '20.0f')
+        print('PASS: RED Nether portal' + ('.' if portal_only else ', Carpet death, and rejoin.'))
     cmd('ma stop', 'Game stopped')
     cmd('ma status', 'Phase: LOBBY')
 
 
-def run(*, game=True, spike=False, cleanup_delay=0, log_name='smoke-console.log'):
+def run(*, game=True, spike=False, portal_only=False, cleanup_delay=0, log_name='smoke-console.log'):
     # Refuse an existing server before changing its local files.
     for port in (25565, 25575):
         with socket.socket() as probe:
@@ -172,22 +173,22 @@ def run(*, game=True, spike=False, cleanup_delay=0, log_name='smoke-console.log'
             probe.bind(('127.0.0.1', port))
     setup()
     env = os.environ.copy()
-    java = Path.home() / '.local/jdks/jdk-25.0.5+8'
-    env.update(JAVA_HOME=str(java), PATH=f'{java}/bin:{env["PATH"]}')
     log = RUN / log_name
     rcon = None
-    print(f'Waiting for the shared Gradle lock. Server log: {log}', flush=True)
+    print(f'Waiting for a shared Gradle build slot. Server log: {log.relative_to(ROOT)}', flush=True)
     with log.open('w') as output:
-        process = subprocess.Popen(['flock', str(Path.home() / '.gradle/mobarena-build.lock'),
-                                    './gradlew', '--console=plain', 'runServer'], cwd=ROOT,
+        # tools/gradle.sh sets Java 25 and waits for one of the shared build slots.
+        process = subprocess.Popen([str(ROOT / 'tools/gradle.sh'), '--console=plain', 'runServer'], cwd=ROOT,
                                    env=env, stdin=subprocess.PIPE, stdout=output, stderr=subprocess.STDOUT,
                                    start_new_session=True)
         try:
-            wait_log(log, r'RCON running on', process, timeout=None)
+            # Wait without a limit only for the build slot; a hung startup must still fail.
+            wait_log(log, r'Starting minecraft server', process, timeout=None)
+            wait_log(log, r'RCON running on', process, timeout=180)
             rcon = Rcon()
             check_startup_cleanup()
             if game:
-                run_scenario(rcon, log, process, spike=spike)
+                run_scenario(rcon, log, process, spike=spike, portal_only=portal_only)
                 if cleanup_delay:
                     time.sleep(cleanup_delay)
         finally:
@@ -199,13 +200,17 @@ def run(*, game=True, spike=False, cleanup_delay=0, log_name='smoke-console.log'
                     process.wait(timeout=90)
                 except subprocess.TimeoutExpired:
                     os.killpg(process.pid, signal.SIGTERM)
-                    process.wait(timeout=30)
+                    try:
+                        process.wait(timeout=30)
+                    except subprocess.TimeoutExpired:
+                        os.killpg(process.pid, signal.SIGKILL)
+                        process.wait()
             if rcon:
                 rcon.sock.close()
     for server_log in (log, RUN / 'logs/latest.log'):
-        text = server_log.read_text(errors='replace')
+        text = server_log.read_text(errors='replace') if server_log.exists() else ''
         if re.search(r'Exception|\bERROR\b|Caused by:', text):
-            raise AssertionError(f'Server log contains an exception or error: {server_log}')
+            raise AssertionError(f'Server log contains an exception or error: {server_log.relative_to(ROOT)}')
     if process.returncode:
         raise RuntimeError(f'Server exit status: {process.returncode}')
     print('PASS: Server scenario and clean server log.')

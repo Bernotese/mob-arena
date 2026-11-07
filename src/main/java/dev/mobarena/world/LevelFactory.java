@@ -45,6 +45,7 @@ public final class LevelFactory {
     public static RuntimeLevelHandle open(MinecraftServer server, long seed, TeamId team, WorldKind kind) {
         var handle = Fantasy.get(server).openTemporaryLevel(Identifier.fromNamespaceAndPath("mobarena",
                 id(team, kind).getPath() + "_" + SESSION + "_" + Long.toUnsignedString(++nextLevelId)), config(server, seed, kind));
+        WorldCleanup.trackOpen(handle.asLevel());
         try { GameLevels.register(team, kind, handle.asLevel()); }
         catch (RuntimeException e) { handle.delete(); throw e; }
         WorldCleanup.track(handle);

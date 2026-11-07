@@ -1,0 +1,30 @@
+[
+  {
+    "case": "3-portal-rejoin-immediate-1",
+    "result": "PASS",
+    "startup_clean": true,
+    "rejected_execution": false,
+    "error": ""
+  },
+  {
+    "case": "3-portal-rejoin-immediate-2",
+    "result": "PASS",
+    "startup_clean": true,
+    "rejected_execution": false,
+    "error": ""
+  },
+  {
+    "case": "3-portal-rejoin-immediate-3",
+    "result": "PASS",
+    "startup_clean": true,
+    "rejected_execution": false,
+    "error": ""
+  },
+  {
+    "case": "final-cleanup-check",
+    "result": "PASS",
+    "startup_clean": true,
+    "rejected_execution": false,
+    "error": ""
+  }
+]
