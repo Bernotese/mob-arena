@@ -1,6 +1,7 @@
 package dev.mobarena.arena;
 
 import dev.mobarena.core.*;
+import dev.mobarena.gametest.TestEnd;
 import dev.mobarena.gametest.TestPlayers;
 import dev.mobarena.team.TeamId;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -23,7 +24,7 @@ final class ArenaFixture implements AutoCloseable {
 
     ArenaFixture(GameTestHelper h, boolean withMate, boolean enterArena) {
         this.h = h;
-        game.stop();
+        TestEnd.stopStaleGame();
         red = TestPlayers.create(h); blue = TestPlayers.create(h);
         mate = withMate ? TestPlayers.create(h) : null;
         var teams = new HashMap<UUID, TeamId>();
@@ -35,7 +36,7 @@ final class ArenaFixture implements AutoCloseable {
             @Override public void teamFinished(TeamId team, long timeTicks) { recorder.finished(team, timeTicks); }
             @Override public void teamEliminated(TeamId team, TeamProgress progress) { recorder.eliminated(team, progress); }
         });
-        h.runBeforeTestEnd(this::close);
+        TestEnd.run(h, this::close);
         if (enterArena) { game.endPhaseNow(); game.endPhaseNow(); }
     }
 
@@ -55,7 +56,7 @@ final class ArenaFixture implements AutoCloseable {
     }
 
     @Override public void close() {
-        if (game.context() == ctx) game.stop();
+        if (game.context() == ctx) TestEnd.stopStaleGame();
         for (var p : new ServerPlayer[]{red, blue, mate}) if (p != null && ctx.server().getPlayerList().getPlayer(p.getUUID()) != null)
             ctx.server().getPlayerList().remove(p);
     }

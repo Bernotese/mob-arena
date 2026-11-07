@@ -1,5 +1,6 @@
 package dev.mobarena.world;
 
+import dev.mobarena.gametest.TestEnd;
 import dev.mobarena.team.TeamId;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -41,15 +42,16 @@ public class WorldGameTest {
         // This environment keeps global world generation settings separate from other module tests.
         helper.runAfterDelay(2, () -> {
             var settings = new WorldTestSettings(server);
-            helper.runBeforeTestEnd(settings::close);
+            TestEnd.run(helper, settings::close);
             StructureWorldChecks.verify(helper);
             var game = dev.mobarena.core.GameManager.get();
+            TestEnd.stopStaleGame();
             var redPlayer = WorldTestPlayers.create(helper);
             var bluePlayer = WorldTestPlayers.create(helper);
             var teams = java.util.Map.of(redPlayer.getUUID(), TeamId.RED, bluePlayer.getUUID(), TeamId.BLUE);
             helper.assertTrue(game.start(server, teams, teams.keySet()), "First game starts");
             var ctx = game.context();
-            helper.runBeforeTestEnd(() -> WorldCleanup.clean(server));
+            TestEnd.run(helper, () -> { TestEnd.stopStaleGame(); WorldCleanup.clean(server); });
             var worlds = ctx.get(TeamWorlds.KEY);
             helper.assertValueEqual(worlds.size(), 2, "Two teams");
             var red = worlds.get(TeamId.RED);
