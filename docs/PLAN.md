@@ -36,7 +36,7 @@ dev.mobarena
 ├── arena/                     T7: ArenaBattle, WaveSpawner, WaveMobAi, ArenaBounds, RespawnManager
 ├── result/                    T8: ProgressTracker, WinResolver (pure logic), SuddenDeath, EndSequence
 ├── hud/                       T9: BossBarHud, ActionBar, Titles
-└── mixin/                     Only if no Fabric event exists. Each mixin file names its owner task in a comment.
+(mixins: dev.mobarena.<module>.mixin, see 2.2)
 ```
 
 ### 2.1 Core contracts (made in T2, then frozen)
@@ -51,6 +51,11 @@ Other modules use only these types from `core`. A change to them needs a review 
 ### 2.2 Rules for all code
 - Keep logic that does not need Minecraft in plain Java classes (randomizer map, wave split, win rules, team shuffle). Unit-test these classes.
 - Use Fabric API events first. Use a mixin only when no event exists. Explain each mixin in one comment line.
+- Shared files (rule for all tasks):
+  - Mixins: put them in `dev.mobarena.<module>.mixin`. Each module has its own config `src/main/resources/mobarena.<module>.mixins.json`. Add one line for it to the `mixins` array in `fabric.mod.json`.
+  - Entrypoint: each module has `<Module>Module.init()`. Add one call line to `MobArena.onInitialize`.
+  - GameTests: add your test class to the `fabric-gametest` entrypoint list in `src/gametest/resources/fabric.mod.json`.
+  - Do not change other lines in these shared files. `orchestrator` fixes merge conflicts in these files.
 - All timers count server ticks. Do not use wall-clock time for game logic.
 - No client-side code. All text uses `Component` with plain colors (no resource pack).
 - Log with SLF4J, logger name `mobarena`.
