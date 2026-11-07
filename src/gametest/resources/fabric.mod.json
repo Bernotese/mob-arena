@@ -9,7 +9,9 @@
       "dev.mobarena.gametest.MobArenaGameTest",
       "dev.mobarena.gametest.CoreGameTest",
       "dev.mobarena.gametest.LobbyGameTest",
-      "dev.mobarena.randomizer.RandomizerGameTest"
+      "dev.mobarena.randomizer.RandomizerGameTest",
+      "dev.mobarena.hud.HudGameTest",
+      "dev.mobarena.config.gui.ConfigGuiGameTest"
     ]
   },
   "depends": {
