@@ -286,8 +286,7 @@ def scenario_s1(rcon, log, process):
     if not verdict or (verdict['type'], verdict['winner'], verdict['reason']) != ('WIN', 'RED', 'All waves cleared'):
         raise AssertionError(f'Expected RED to win by all waves cleared: phase {current["phase"]}, verdict {verdict}')
     print('PASS: RED wins (All waves cleared).', flush=True)
-    # The game end can block the server for some seconds (known issue), so wait long.
-    current = wait_state(rcon, lambda s: s['phase'] == 'LOBBY', 'END -> LOBBY', timeout=180, seen=seen)
+    current = wait_state(rcon, lambda s: s['phase'] == 'LOBBY', 'END -> LOBBY', timeout=60, seen=seen)
     expected = ['PREP', 'WAVE_CONFIG', 'ARENA', 'END', 'LOBBY']
     if seen != expected:
         raise AssertionError(f'Phase order: {seen}, expected {expected}')
@@ -299,7 +298,11 @@ def scenario_s1(rcon, log, process):
     print(f'INFO: Game levels closed {time.monotonic() - started:.1f} s after LOBBY was seen.', flush=True)
     for name in ('red1', 'blue1'):
         rcon.command(f'data get entity {name} Inventory', 'has the following entity data: []')
-    print('PASS: Inventories are empty.', flush=True)
+        # 26.3 saves armor and offhand under 'equipment' and leaves the key out when it is empty.
+        reply = rcon.command(f'data get entity {name} equipment')
+        if 'Found no elements matching' not in reply and 'has the following entity data: {}' not in reply:
+            raise AssertionError(f'{name} keeps armor or offhand items: {reply}')
+    print('PASS: Inventories, armor, and offhand are empty.', flush=True)
     deadline = time.monotonic() + 30
     while mob_arena_folders():
         if time.monotonic() > deadline:
@@ -361,7 +364,24 @@ def scenario_s16(rcon, log, process):
 SCENARIOS = {'s1': scenario_s1, 's15': scenario_s15, 's16': scenario_s16}
 
 
-def run(*, game=True, spike=False, portal_only=False, cleanup_delay=0, log_name='smoke-console.log', scenario=None):
+# Local files that the smoke run changes; restored afterwards, so a manual runServer keeps its own settings.
+RESTORE = [RUN / 'config/mob-arena.json', RUN / 'server.properties']
+
+
+def run(**options):
+    saved = {path: path.read_bytes() if path.exists() else None for path in RESTORE}
+    try:
+        _run(**options)
+    finally:
+        for path, data in saved.items():
+            if data is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.write_bytes(data)
+        print('Restored the Mob Arena config and server.properties.', flush=True)
+
+
+def _run(*, game=True, spike=False, portal_only=False, cleanup_delay=0, log_name='smoke-console.log', scenario=None):
     # Refuse an existing server before changing its local files.
     for port in (25565, 25575):
         with socket.socket() as probe:
