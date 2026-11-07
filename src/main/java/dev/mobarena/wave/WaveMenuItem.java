@@ -12,14 +12,14 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import java.util.*;
 
-/** Recovery compass menu item. T4 installs the protection and overflow adapter. */
+/** Recovery compass menu item with shared T4 protection. */
 public final class WaveMenuItem implements WaveMenuItems {
     public interface Guard {
         Guard NONE=new Guard() {};
         default void protect(ServerPlayer player, ItemStack stack) {}
         default boolean storeOverflow(ServerPlayer player,GameContext ctx,ItemStack stack) { return false; }
     }
-    private static final String TAG="mobarena:wave_menu";
+    public static final String TAG="mobarena:wave_menu";
     private final Guard guard;
     private final Map<UUID,Runnable> actions=new HashMap<>();
     public WaveMenuItem(Guard guard) { this.guard=Objects.requireNonNull(guard); }
@@ -39,6 +39,13 @@ public final class WaveMenuItem implements WaveMenuItems {
         var data=stack.get(DataComponents.CUSTOM_DATA);
         return data!=null && data.copyTag().getBooleanOr(TAG,false);
     }
+    public static ItemStack createStack() {
+        var stack=new ItemStack(Items.RECOVERY_COMPASS);
+        var data=new CompoundTag();data.putBoolean(TAG,true);
+        stack.set(DataComponents.CUSTOM_DATA,CustomData.of(data));
+        stack.set(DataComponents.CUSTOM_NAME,Component.literal("Wave menu"));
+        return stack;
+    }
     @Override public void give(ServerPlayer player,GameContext ctx,Runnable open) {
         actions.put(player.getUUID(),open);
         var inventory=player.getInventory();var old=inventory.getItem(8);
@@ -49,10 +56,7 @@ public final class WaveMenuItem implements WaveMenuItems {
                 player.sendSystemMessage(Component.literal("Your inventory is full. Use /ma waves."));return;
             }
         }
-        var stack=new ItemStack(Items.RECOVERY_COMPASS);
-        var data=new CompoundTag();data.putBoolean(TAG,true);
-        stack.set(DataComponents.CUSTOM_DATA,CustomData.of(data));
-        stack.set(DataComponents.CUSTOM_NAME,Component.literal("Wave menu"));
+        var stack=createStack();
         inventory.setItem(8,stack);guard.protect(player,stack);inventory.setChanged();
     }
     @Override public void remove(ServerPlayer player) {

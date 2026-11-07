@@ -51,7 +51,7 @@ public final class MobArenaConfig {
     }
     public void validate() {
         for (var field : getClass().getFields()) try {
-            if (field.getType() == int.class) ConfigBounds.bounds(field.getName()).validate(field.getName(), field.getInt(this));
+            if (field.getType() == int.class) ConfigBounds.requireBounds(field.getName()).validate(field.getName(), field.getInt(this));
         } catch (IllegalAccessException e) { throw new IllegalStateException(e); }
         if (arenaTemplate == null || !arenaTemplate.matches("[a-zA-Z0-9_-]+")) throw new IllegalArgumentException("Invalid arena template");
         if (mobBlacklist == null || mobBlacklist.stream().anyMatch(s -> s == null || !s.matches("([a-z0-9_.-]+:)?[a-z0-9_./-]+"))) throw new IllegalArgumentException("Invalid mob blacklist");

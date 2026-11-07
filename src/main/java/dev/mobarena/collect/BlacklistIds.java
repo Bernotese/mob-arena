@@ -5,7 +5,7 @@ import java.util.stream.Collectors;
 public final class BlacklistIds {
     private BlacklistIds() {}
     public static String normalize(String id) {
-        String value = Objects.requireNonNull(id).trim();
+        String value = Objects.requireNonNull(id).trim().toLowerCase(Locale.ROOT);
         return value.contains(":") ? value : "minecraft:" + value;
     }
     public static Set<String> normalize(Collection<String> ids) {

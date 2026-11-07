@@ -141,4 +141,50 @@ public class WaveCollectionGameTest {
             h.assertTrue(f.game.phase()==Phase.ARENA,"Leaving unready player completes setup");
         }h.succeed();
     }
+    @GameTest public void menuItemCannotDropAndRestores(GameTestHelper h) {
+        try(var f=new Fixture(h)) {
+            f.game.endPhaseNow();
+            var inventory=f.red.getInventory();inventory.setSelectedSlot(8);
+            h.assertTrue(WaveMenuItem.isMenu(inventory.getSelectedItem()),"Menu item exists in wave setup");
+            f.red.drop(false);
+            h.assertTrue(WaveMenuItem.isMenu(inventory.getSelectedItem()),"Drop key keeps menu item");
+            h.assertTrue(f.red.drop(inventory.getSelectedItem().copy(),false,net.minecraft.util.Prediction.SERVER_ONLY)==null,
+                    "Direct drop creates no menu item entity");
+            inventory.setItem(8,net.minecraft.world.item.ItemStack.EMPTY);
+            net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.invoker().onEndTick(f.ctx.server());
+            h.assertTrue(hasMenu(f.red),"End tick restores missing menu item");
+            f.game.endPhaseNow();
+            net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.invoker().onEndTick(f.ctx.server());
+            h.assertTrue(!hasMenu(f.red),"Menu item stays removed after wave setup");
+        }h.succeed();
+    }
+    private boolean hasMenu(ServerPlayer player) {
+        var inventory=player.getInventory();
+        for(int i=0;i<inventory.getContainerSize();i++) if(WaveMenuItem.isMenu(inventory.getItem(i))) return true;
+        return false;
+    }
+    @GameTest public void menuItemOverflowUsesBackpack(GameTestHelper h) {
+        for(boolean fits:new boolean[]{true,false}) {
+            try(var f=new Fixture(h)) {
+                var inventory=f.red.getInventory();
+                for(int slot=0;slot<36;slot++) inventory.setItem(slot,new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND,64));
+                inventory.setItem(8,new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.EMERALD,7));
+                var backpack=dev.mobarena.backpack.TeamBackpack.get(f.ctx.server()).inventory(TeamId.RED);
+                if(!fits) {
+                    for(int slot=0;slot<27;slot++) backpack.setItem(slot,new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND,64));
+                    backpack.setItem(0,new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.EMERALD,63));
+                }
+                f.game.endPhaseNow();
+                if(fits) {
+                    h.assertTrue(WaveMenuItem.isMenu(inventory.getItem(8)),"Overflow frees menu slot");
+                    h.assertTrue(backpack.getItem(0).is(net.minecraft.world.item.Items.EMERALD) && backpack.getItem(0).getCount()==7,
+                            "Backpack preserves displaced stack");
+                } else {
+                    h.assertTrue(inventory.getItem(8).getCount()==7 && inventory.getItem(8).is(net.minecraft.world.item.Items.EMERALD),
+                            "Insufficient backpack space keeps original slot");
+                    h.assertTrue(backpack.getItem(0).getCount()==63,"Failed overflow does not insert a partial stack");
+                }
+            }
+        }h.succeed();
+    }
 }

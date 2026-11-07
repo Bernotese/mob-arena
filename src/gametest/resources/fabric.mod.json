@@ -12,7 +12,10 @@
       "dev.mobarena.randomizer.RandomizerGameTest",
       "dev.mobarena.gametest.WaveCollectionGameTest",
       "dev.mobarena.hud.HudGameTest",
-      "dev.mobarena.config.gui.ConfigGuiGameTest"
+      "dev.mobarena.config.gui.ConfigGuiGameTest",
+      "dev.mobarena.backpack.BackpackGameTest",
+      "dev.mobarena.backpack.BackpackGuardGameTest",
+      "dev.mobarena.backpack.BackpackLifecycleGameTest"
     ]
   },
   "depends": {

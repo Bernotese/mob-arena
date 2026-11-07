@@ -154,8 +154,10 @@ public final class LobbyManager implements PhaseListener {
     }
 
     public boolean needsRescue(ServerPlayer player) {
-        if (spawn == null || player.level() != player.level().getServer().overworld()) return false;
+        if (!protectedPlayer(player)) return false;
         if ((player.isCreative() || player.isSpectator()) && player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return false;
+        if (player.getY() < player.level().getMinY()) return true;
+        if (spawn == null || player.level() != player.level().getServer().overworld()) return false;
         double dx = player.getX() - spawn.x, dz = player.getZ() - spawn.z;
         return dx * dx + dz * dz <= 64 && player.getY() < spawn.y - 10;
     }
