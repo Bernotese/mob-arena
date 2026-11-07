@@ -25,6 +25,10 @@ public final class CoreCommands {
     private static int reply(CommandSourceStack source, String text) {
         source.sendSuccess(() -> Component.literal(text), false); return 1;
     }
+    private static boolean running(CommandSourceStack source) {
+        if (GameManager.get().context() != null) return true;
+        source.sendFailure(Component.literal("No game is running.")); return false;
+    }
     public static void register(ConfigStore config, LobbyManager lobby) {
         CommandRegistry.register(root -> {
             root.then(literal("start").requires(CoreCommands::admin).executes(c -> {
@@ -34,8 +38,8 @@ public final class CoreCommands {
                 if (!started) { c.getSource().sendFailure(Component.literal("Start requires the lobby and an online player in each team.")); return 0; }
                 return reply(c.getSource(), "Game started.");
             }));
-            root.then(literal("stop").requires(CoreCommands::admin).executes(c -> { GameManager.get().stop(); return reply(c.getSource(), "Game stopped."); }));
-            root.then(literal("skip").requires(CoreCommands::admin).executes(c -> { GameManager.get().endPhaseNow(); return reply(c.getSource(), "Phase ended."); }));
+            root.then(literal("stop").requires(CoreCommands::admin).executes(c -> { if (!running(c.getSource())) return 0; GameManager.get().stop(); return reply(c.getSource(), "Game stopped."); }));
+            root.then(literal("skip").requires(CoreCommands::admin).executes(c -> { if (!running(c.getSource())) return 0; GameManager.get().endPhaseNow(); return reply(c.getSource(), "Phase ended."); }));
             root.then(literal("status").executes(c -> {
                 GameManager game = GameManager.get(); GameContext ctx = game.context();
                 TeamId team = c.getSource().getPlayer() == null ? null : (ctx == null ? TeamManager.get().team(c.getSource().getPlayer().getUUID()) : ctx.team(c.getSource().getPlayer().getUUID()));
@@ -61,9 +65,12 @@ public final class CoreCommands {
                     if (!lobby(c.getSource())) return 0;
                     TeamManager.get().randomize(c.getSource().getServer()); return reply(c.getSource(), "Teams assigned.");
                 }))
-                .then(literal("remove").requires(CoreCommands::admin).then(argument("player", EntityArgument.player()).executes(c -> {
+                .then(literal("remove").requires(CoreCommands::admin).then(argument("player", StringArgumentType.word()).executes(c -> {
                     if (!lobby(c.getSource())) return 0;
-                    TeamManager.get().remove(EntityArgument.getPlayer(c, "player")); return reply(c.getSource(), "Player removed from team.");
+                    if (!TeamManager.get().remove(c.getSource().getServer(), StringArgumentType.getString(c, "player"))) {
+                        c.getSource().sendFailure(Component.literal("No assigned player has that name.")); return 0;
+                    }
+                    return reply(c.getSource(), "Player removed from team.");
                 })))
                 .then(literal("assign").requires(CoreCommands::admin).then(argument("player", EntityArgument.player())
                     .then(literal("red").executes(c -> assign(c, TeamId.RED)))
