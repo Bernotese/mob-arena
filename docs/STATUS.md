@@ -7,7 +7,7 @@ Plans: T8b part 2 (docs/plans/T8.md section 7 + decisions), T7 decisions after t
 ## Open branches (pushed to origin)
 | Branch | Agent | State | Next step |
 |---|---|---|---|
-| claude-3/t7b-battle | claude-3 | T7b review done (claude-2). Fix in progress: slime split on discard, no infighting between wave mobs, block player-built golems/withers, no placeAtSpawn at shutdown. | Finish fix, build, merge first. |
+| claude-3/t7b-battle | claude-3 | T7b review done (claude-2). Fix committed f980f0e; 1 test left: the infight test sees the forced golem target before the end-of-tick reset (wait 1 tick or reset in setTarget). Fixes: slime split on discard, no infighting between wave mobs, block player-built golems/withers, no placeAtSpawn at shutdown. | Finish fix, build, merge first. |
 | codex-1/t10a-debug | codex-1 | Reviewed (claude-1). Base: T7b. | Merged together with t10c. |
 | codex-1/t10c-fullgame | codex-1 | Test commit b684e8e reviewed OK (claude-2). WIP commit e4cdadb has the T10a R1/O fixes. | Rebuild; claude-1 reviews the fix commit; merge after T7b. |
 | codex-2/t5-shutdown | codex-2 | WIP 969a106. Cause: Fantasy delete unregisters a level without close(); its chunk IO worker reschedules into the stopped IO pool at server stop. | Case 5, fix (close removed levels), tools fixes, case 3 three times. |
@@ -26,5 +26,6 @@ Plans: T8b part 2 (docs/plans/T8.md section 7 + decisions), T7 decisions after t
 - New rule: player-built golems and withers are blocked in arenas.
 
 ## Notes
+- build/run/gameTest/world is kept between runs; old item drops there can break drop checks. Delete it before a build (or filter drops to test items).
 - Only one Gradle build at a time: `flock ~/.gradle/mobarena-build.lock ./gradlew ...` (AGENTS.md).
 - Codex 5h limit was almost empty at the pause.
