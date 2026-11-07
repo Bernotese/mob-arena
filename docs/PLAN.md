@@ -45,6 +45,9 @@ Other modules use only these types from `core`. A change to them needs a review 
 - `interface PhaseListener { void onEnter(Phase p, GameContext ctx); void onExit(Phase p, GameContext ctx); void onTick(Phase p, GameContext ctx); }`
 - `GameManager.register(PhaseListener)`, `GameManager.endPhaseNow()`, `GameManager.get()`.
 - `GameContext`: game seed, `TeamId` per player, `ServerLevel` per team (prep and arena), phase timer, config snapshot.
+- Config: `ctx.config()` returns an immutable `MobArenaConfig.Snapshot` record (one per phase). Read values with accessors, for example `ctx.config().prepTimeSeconds()`. `MobArenaConfig` is only the editable JSON model (config commands, config GUI).
+- `record TeamProgress(int clearedWaves, int killsInCurrentWave, long ticks)` in `core`. `ResultHooks` uses it. `ResultHooks.KEY` is set at `start()`.
+- `GameManager` and `GameContext` are for the server thread only. Phase changes during a phase change are queued.
 - `GameContext` has a typed attachment map: `ctx.get(Key<T>)` / `ctx.put(Key<T>, T)`. Modules keep their game state there (for example `MobPool`). All state is gone at game end.
 - `ArenaBattle` (T7) calls `ResultHooks.teamFinished(team, timeTicks)` and `ResultHooks.teamEliminated(team, progress)`. `result` (T8) implements these hooks. T2 makes the empty interface.
 
