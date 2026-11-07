@@ -12,6 +12,7 @@ import xyz.nucleoid.fantasy.util.VoidChunkGenerator;
 import java.util.Locale;
 
 public final class LevelFactory {
+    private static final String SESSION = java.util.UUID.randomUUID().toString().replace("-", "");
     private static long nextLevelId;
     private LevelFactory() {}
     public static Identifier id(TeamId team, WorldKind kind) {
@@ -43,7 +44,7 @@ public final class LevelFactory {
     }
     public static RuntimeLevelHandle open(MinecraftServer server, long seed, TeamId team, WorldKind kind) {
         var handle = Fantasy.get(server).openTemporaryLevel(Identifier.fromNamespaceAndPath("mobarena",
-                id(team, kind).getPath() + "_" + Long.toUnsignedString(++nextLevelId)), config(server, seed, kind));
+                id(team, kind).getPath() + "_" + SESSION + "_" + Long.toUnsignedString(++nextLevelId)), config(server, seed, kind));
         try { GameLevels.register(team, kind, handle.asLevel()); }
         catch (RuntimeException e) { handle.delete(); throw e; }
         WorldCleanup.track(handle);

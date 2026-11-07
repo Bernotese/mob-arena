@@ -58,6 +58,7 @@ public class WorldGameTest {
                         red.overworld().asLevel().getBlockState(new net.minecraft.core.BlockPos(x, y, z)),
                         blue.overworld().asLevel().getBlockState(new net.minecraft.core.BlockPos(x, y, z)), "Equal terrain");
             }
+            PortalWorldChecks.verify(helper, ctx, redPlayer, bluePlayer);
             var keys = worlds.values().stream().flatMap(TeamWorlds::handles).map(h -> h.getRegistryKey()).toList();
             game.stop();
             helper.assertTrue(game.start(server, teams, teams.keySet()), "New game starts in same tick as stop");
