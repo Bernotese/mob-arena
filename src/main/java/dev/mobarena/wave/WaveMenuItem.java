@@ -22,6 +22,9 @@ public final class WaveMenuItem implements WaveMenuItems {
     public static final String TAG="mobarena:wave_menu";
     private final Guard guard;
     private final Map<UUID,Runnable> actions=new HashMap<>();
+    // Players whose hotbar slot could not be freed. restore() must not force the item in.
+    private final Set<UUID> skipped=new HashSet<>();
+    private java.util.function.Consumer<ServerPlayer> opener=player->{};
     public WaveMenuItem(Guard guard) { this.guard=Objects.requireNonNull(guard); }
     public void register() {
         UseItemCallback.EVENT.register((player,level,hand)->use(player,player.getItemInHand(hand)));
@@ -31,13 +34,14 @@ public final class WaveMenuItem implements WaveMenuItems {
     private InteractionResult use(net.minecraft.world.entity.player.Player player,ItemStack stack) {
         if(!isMenu(stack)) return InteractionResult.PASS;
         if(player instanceof ServerPlayer serverPlayer) {
-            Runnable action=actions.get(serverPlayer.getUUID());if(action!=null)action.run();
+            // Rejoined players get the item from restore() and have no stored action.
+            Runnable action=actions.get(serverPlayer.getUUID());
+            if(action!=null)action.run(); else opener.accept(serverPlayer);
         }
         return InteractionResult.SUCCESS;
     }
     public static boolean isMenu(ItemStack stack) {
-        var data=stack.get(DataComponents.CUSTOM_DATA);
-        return data!=null && data.copyTag().getBooleanOr(TAG,false);
+        return dev.mobarena.backpack.GuardedItems.hasTag(stack,TAG);
     }
     public static ItemStack createStack() {
         var stack=new ItemStack(Items.RECOVERY_COMPASS);
@@ -47,18 +51,22 @@ public final class WaveMenuItem implements WaveMenuItems {
         return stack;
     }
     @Override public void give(ServerPlayer player,GameContext ctx,Runnable open) {
-        actions.put(player.getUUID(),open);
+        actions.put(player.getUUID(),open);skipped.remove(player.getUUID());
         var inventory=player.getInventory();var old=inventory.getItem(8);
         if(!old.isEmpty() && !isMenu(old)) {
             int free=inventory.getFreeSlot();
             if(free>=0)inventory.setItem(free,old);
             else if(!guard.storeOverflow(player,ctx,old.copy())) {
+                skipped.add(player.getUUID());
                 player.sendSystemMessage(Component.literal("Your inventory is full. Use /ma waves."));return;
             }
         }
         var stack=createStack();
         inventory.setItem(8,stack);guard.protect(player,stack);inventory.setChanged();
     }
+    @Override public boolean skipped(UUID player) { return skipped.contains(player); }
+    @Override public void clearSkipped() { skipped.clear(); }
+    @Override public void setOpener(java.util.function.Consumer<ServerPlayer> opener) { this.opener=Objects.requireNonNull(opener); }
     @Override public void remove(ServerPlayer player) {
         actions.remove(player.getUUID());
         var inventory=player.getInventory();
