@@ -17,6 +17,7 @@ import java.util.function.Supplier;
 
 /** One team's arena run: BattleFlow timing plus the Minecraft side effects. Server thread only. */
 public final class ArenaBattle {
+    private BattleEvent.Reason eliminationReason;
     final ArenaBattles group;
     final TeamId team;
     private final Supplier<Optional<Arena>> arenaSource;
@@ -44,6 +45,8 @@ public final class ArenaBattle {
     public String currentTag() { return currentTag; }
     public int kills() { return kills; }
     public boolean glowing() { return glow; }
+    /** Why the battle ended in ELIMINATED; empty while it runs or after it finished. */
+    public Optional<BattleEvent.Reason> eliminationReason() { return Optional.ofNullable(eliminationReason); }
     /** True while mobs and deaths still matter (countdown, fight, cooldown). */
     public boolean running() {
         var state = flow.state();
@@ -124,6 +127,7 @@ public final class ArenaBattle {
                 listener.finished(team, f.ticks());
             }
             case BattleEvent.Eliminated e -> {
+                eliminationReason = e.reason();
                 discardWaveMobs();
                 queue = null;
                 currentTag = null;

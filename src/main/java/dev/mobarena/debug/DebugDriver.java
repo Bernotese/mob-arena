@@ -155,6 +155,7 @@ public final class DebugDriver {
             if (battle != null) {
                 b.addProperty("state", battle.state().name()); b.addProperty("tag", battle.currentTag());
                 b.addProperty("alive", battle.waveMobs().size()); b.addProperty("kills", battle.kills());
+                b.add("reason", battle.eliminationReason().<JsonElement>map(r -> new JsonPrimitive(r.name())).orElse(JsonNull.INSTANCE));
             }
             battles.add(team.name(), battle == null ? JsonNull.INSTANCE : b);
         }
