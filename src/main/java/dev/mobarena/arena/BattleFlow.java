@@ -26,15 +26,15 @@ public final class BattleFlow {
             elapsed++;
             stateTicks++;
         }
-        if (state == State.FIGHT) kills = in.killsInWave();
-        if (in.allDown() || !in.anyOnline()) {
-            eliminate(events, in.allDown() ? BattleEvent.Reason.ALL_DOWN : BattleEvent.Reason.NO_PLAYERS);
-            return List.copyOf(events);
-        }
         if (state == State.WAITING_ARENA) {
             if (!in.arenaReady()) return List.of();
             wave = 1;
             state = State.COUNTDOWN;
+        }
+        if (state == State.FIGHT) kills = in.killsInWave();
+        if (!in.anyOnline() || in.allDown()) {
+            eliminate(events, !in.anyOnline() ? BattleEvent.Reason.NO_PLAYERS : BattleEvent.Reason.ALL_DOWN);
+            return List.copyOf(events);
         }
         if (state == State.COOLDOWN && stateTicks >= script.cooldownTicks()) {
             wave++;

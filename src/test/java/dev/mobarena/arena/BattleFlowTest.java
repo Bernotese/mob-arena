@@ -79,7 +79,12 @@ class BattleFlowTest {
     }
     @Test void noOnlinePlayersEliminatesOnce() {
         var f=flow(1,0,0,100,50,false);
-        assertEquals(BattleEvent.Reason.NO_PLAYERS,((BattleEvent.Eliminated)f.tick(new TickInput(false,false,0,0,false,false)).getFirst()).reason());
+        for (int tick=0;tick<1200;tick++)
+            assertTrue(f.tick(new TickInput(false,false,0,0,true,false)).isEmpty());
+        assertEquals(BattleFlow.State.WAITING_ARENA,f.state());
+        assertEquals(0,f.elapsedTicks());
+        assertEquals(BattleEvent.Reason.NO_PLAYERS,((BattleEvent.Eliminated)
+            f.tick(new TickInput(true,false,0,0,true,false)).getFirst()).reason());
         assertTrue(f.tick(live).isEmpty());
     }
     @Test void zeroTimersClearAllEmptyWavesImmediately() {
