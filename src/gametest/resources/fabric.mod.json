@@ -11,7 +11,8 @@
       "dev.mobarena.gametest.LobbyGameTest",
       "dev.mobarena.randomizer.RandomizerGameTest",
       "dev.mobarena.hud.HudGameTest",
-      "dev.mobarena.config.gui.ConfigGuiGameTest"
+      "dev.mobarena.config.gui.ConfigGuiGameTest",
+      "dev.mobarena.gametest.ResultGameTest"
     ]
   },
   "depends": {

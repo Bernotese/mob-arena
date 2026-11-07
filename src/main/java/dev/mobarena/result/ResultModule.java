@@ -37,6 +37,7 @@ public final class ResultModule {
 
     /** T7b installs the sudden death battle here. */
     public static void setSuddenDeathStarter(SuddenDeathStarter starter) { suddenDeath = Objects.requireNonNull(starter); }
+    public static SuddenDeathStarter suddenDeathStarter() { return suddenDeath; }
 
     /** Runs the resolver once and applies the verdict. Package-private for tests. */
     static void resolve(GameManager game) {
