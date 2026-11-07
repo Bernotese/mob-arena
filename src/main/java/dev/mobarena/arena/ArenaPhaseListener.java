@@ -47,7 +47,7 @@ public final class ArenaPhaseListener implements PhaseListener {
             group.start(team, () -> Arena.fromWorlds(ctx, team), script, listener, true);
         }
         if (ctx.server() != null) {
-            group.broadcast(Component.literal("Sudden death! Each team fights all enemy waves at once. "
+            group.broadcastToTeams(Component.literal("Sudden death! Each team fights all enemy waves at once. "
                     + "The first team that kills all mobs wins.").withStyle(ChatFormatting.DARK_PURPLE));
             group.resetPlayers();
         }

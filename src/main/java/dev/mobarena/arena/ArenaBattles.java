@@ -124,6 +124,11 @@ public final class ArenaBattles implements AutoCloseable {
         }
     }
 
+    /** Only players of the game teams (not lobby players). */
+    void broadcastToTeams(Component message) {
+        for (TeamId team : TeamId.values()) for (var player : onlinePlayers(team)) player.sendSystemMessage(message);
+    }
+
     void broadcast(Component message) {
         for (var player : ctx.server().getPlayerList().getPlayers()) player.sendSystemMessage(message);
     }

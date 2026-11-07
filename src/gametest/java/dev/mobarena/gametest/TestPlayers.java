@@ -14,11 +14,25 @@ public final class TestPlayers {
     private TestPlayers() {}
     public static ServerPlayer create(GameTestHelper helper) { return create(helper, player -> {}); }
     public static ServerPlayer create(GameTestHelper helper, java.util.function.Consumer<ServerPlayer> beforeJoin) {
+        return create(helper, beforeJoin, null);
+    }
+    /** Test player that also records its chat (system) messages into {@code messages}. */
+    public static ServerPlayer recording(GameTestHelper helper, java.util.List<String> messages) {
+        return create(helper, player -> {}, java.util.Objects.requireNonNull(messages));
+    }
+    private static ServerPlayer create(GameTestHelper helper, java.util.function.Consumer<ServerPlayer> beforeJoin,
+                                       java.util.List<String> messages) {
         UUID id = UUID.randomUUID();
         GameProfile profile = new GameProfile(id, "test_" + id.toString().substring(0, 8));
         var cookie = CommonListenerCookie.createInitial(profile, false);
         var server = helper.getLevel().getServer();
-        ServerPlayer player = new ServerPlayer(server, helper.getLevel(), profile, cookie.clientInformation());
+        ServerPlayer player = messages == null ? new ServerPlayer(server, helper.getLevel(), profile, cookie.clientInformation())
+                : new ServerPlayer(server, helper.getLevel(), profile, cookie.clientInformation()) {
+                    @Override public void sendSystemMessage(net.minecraft.network.chat.Component message, boolean overlay) {
+                        if (!overlay) messages.add(message.getString());
+                        super.sendSystemMessage(message, overlay);
+                    }
+                };
         beforeJoin.accept(player);
         Connection connection = new Connection(PacketFlow.SERVERBOUND);
         new EmbeddedChannel(connection);
