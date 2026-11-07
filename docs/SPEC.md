@@ -102,7 +102,7 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - Fish do not count (section 3.1), so they never spawn. Other water mobs (squid, dolphin, guardian, axolotl, and others) spawn in a water basin of the arena. If the arena has no basin, they spawn in a 1-block water source at the spawn point. **[DEFAULT]**
 
 ### 7.4 Wave time limit
-- Each wave has a max time: 5 min (`waveMaxTimeSeconds = 300`).
+- Each wave has a max time: 15 min (`waveMaxTimeSeconds = 900`).
 - If the time ends before the wave is cleared, the team is **eliminated** at this wave. **[DEFAULT]**
 
 ### 7.5 Death and respawn
@@ -159,7 +159,7 @@ Root: `/mobarena`, alias `/ma`.
 | `waveConfigTimeSeconds` | int | 180 |
 | `waveCountdownSeconds` | int | 10 |
 | `waveCooldownSeconds` | int | 20 |
-| `waveMaxTimeSeconds` | int | 300 |
+| `waveMaxTimeSeconds` | int | 900 |
 | `suddenDeathMaxTimeSeconds` | int | 600 |
 | `arenaRespawnSeconds` | int | 10 |
 | `mobGlowAfterSeconds` | int | 60 |
