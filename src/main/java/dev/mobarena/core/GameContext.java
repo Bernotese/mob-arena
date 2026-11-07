@@ -31,7 +31,7 @@ public final class GameContext {
     public void setArenaLevel(TeamId team, ServerLevel level) { arenaLevels.put(team, level); }
     public GameClock timer() { return timer; }
     public MobArenaConfig.Snapshot config() { return config; }
-    void setConfig(MobArenaConfig config) { this.config = config.snapshot(); }
+    void setConfig(MobArenaConfig.Snapshot config) { this.config = config; }
     @SuppressWarnings("unchecked") public <T> T get(Key<T> key) { return (T) attachments.get(key); }
     public <T> void put(Key<T> key, T value) { if (value == null) attachments.remove(key); else attachments.put(key, value); }
     public <T> T getOrCreate(Key<T> key, Supplier<T> factory) {

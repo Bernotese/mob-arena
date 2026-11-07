@@ -64,4 +64,28 @@ class GameManagerTest {
         int[] closed = {0}; ctx.put(Key.<AutoCloseable>of("close"), () -> closed[0]++);
         game.stop(); assertEquals(1, closed[0]);
     }
+    @Test void invalidNextConfigDoesNotCallExitOrChangePhase() {
+        GameManager game = game(); game.start(null, teams, teams.keySet());
+        List<Phase> exits = new ArrayList<>();
+        game.register(new PhaseListener() { public void onExit(Phase p, GameContext ctx) { exits.add(p); } });
+        game.setConfigSource(() -> { var c = new MobArenaConfig(); c.prepTimeSeconds = 0; return c; });
+        assertThrows(IllegalArgumentException.class, game::endPhaseNow);
+        assertEquals(Phase.PREP, game.phase()); assertTrue(exits.isEmpty());
+        game.shutdown(); assertNull(game.context()); assertEquals(Phase.LOBBY, game.phase()); assertTrue(exits.isEmpty());
+    }
+    @Test void nestedSuddenDeathFinishAndStopAreQueued() {
+        GameManager game = game(); List<Phase> entered = new ArrayList<>();
+        game.register(new PhaseListener() {
+            public void onEnter(Phase p, GameContext ctx) {
+                entered.add(p);
+                if (p == Phase.ARENA) game.enterSuddenDeath();
+                if (p == Phase.SUDDEN_DEATH) game.finish();
+                if (p == Phase.END) game.stop();
+            }
+        });
+        game.start(null, teams, teams.keySet()); game.endPhaseNow(); game.endPhaseNow();
+        assertEquals(List.of(Phase.PREP, Phase.WAVE_CONFIG, Phase.ARENA, Phase.SUDDEN_DEATH, Phase.END, Phase.LOBBY), entered);
+        assertNull(game.context());
+    }
+
 }

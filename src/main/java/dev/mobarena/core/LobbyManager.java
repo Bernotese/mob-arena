@@ -12,6 +12,39 @@ import java.util.*;
 /** Lobby and wave holding area share the overworld platform. */
 public final class LobbyManager implements PhaseListener {
     private record Spawn(double x, double y, double z, float yaw, float pitch) {}
+    private record ReturnPosition(ServerLevel level, double x, double y, double z, float yaw, float pitch) {}
+    private final Map<UUID, ReturnPosition> returns = new HashMap<>();
+    private final List<java.util.function.Consumer<MinecraftServer>> resetHooks = new ArrayList<>();
+    public void registerResetHook(java.util.function.Consumer<MinecraftServer> hook) { resetHooks.add(hook); }
+    public void leave(ServerPlayer player) {
+        GameContext ctx = GameManager.get().context();
+        if (ctx != null && ctx.team(player.getUUID()) != null) returns.put(player.getUUID(),
+            new ReturnPosition(player.level(), player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
+    }
+    public void join(ServerPlayer player) {
+        GameManager game = GameManager.get(); GameContext ctx = game.context();
+        if (ctx == null || ctx.team(player.getUUID()) == null) { sendToLobby(player, ctx != null); return; }
+        if (game.phase() == Phase.WAVE_CONFIG) { sendToLobby(player, false); return; }
+        ReturnPosition pos = returns.remove(player.getUUID());
+        if (pos != null && player.level().getServer().getLevel(pos.level.dimension()) != null) {
+            player.teleportTo(pos.level, pos.x, pos.y, pos.z, Set.of(), pos.yaw, pos.pitch, true);
+            player.setGameMode(game.phase() == Phase.PREP ? GameType.SURVIVAL : GameType.SPECTATOR);
+            protect(player, false);
+        } else if (game.phase() == Phase.PREP && ctx.prepLevel(ctx.team(player.getUUID())) != null) {
+            ServerLevel level = ctx.prepLevel(ctx.team(player.getUUID())); var data = level.getRespawnData();
+            player.teleportTo(level, data.pos().getX() + 0.5, data.pos().getY(), data.pos().getZ() + 0.5, Set.of(), data.yaw(), data.pitch(), true);
+            player.setGameMode(GameType.SURVIVAL); protect(player, false);
+        } else sendToLobby(player, true);
+    }
+    public void shutdown(MinecraftServer server) {
+        GameManager.get().shutdown(); returns.clear(); runResetHooks(server);
+    }
+    private void runResetHooks(MinecraftServer server) {
+        for (var hook : List.copyOf(resetHooks)) {
+            try { hook.accept(server); }
+            catch (RuntimeException e) { dev.mobarena.MobArena.LOGGER.error("Game cleanup failed", e); }
+        }
+    }
     private final Path path;
     private Spawn spawn;
     public LobbyManager(Path path) {
@@ -65,10 +98,18 @@ public final class LobbyManager implements PhaseListener {
     }
     @Override public void onEnter(Phase phase, GameContext ctx) {
         if (ctx.server() == null) return;
+        if (phase == Phase.LOBBY) {
+            returns.clear();
+            runResetHooks(ctx.server());
+        }
         for (ServerPlayer player : ctx.server().getPlayerList().getPlayers()) {
-            if (phase == Phase.LOBBY) { player.getInventory().clearContent(); sendToLobby(player, false); }
+            if (phase == Phase.LOBBY) {
+                player.closeContainer(); player.getInventory().clearContent(); player.removeAllEffects();
+                player.setExperiencePoints(0); player.setExperienceLevels(0); player.totalExperience = 0;
+                player.setRespawnPosition(null, false); sendToLobby(player, false);
+            }
             else if (ctx.team(player.getUUID()) != null) {
-                if (phase == Phase.WAVE_CONFIG) sendToLobby(player, false);
+                if (phase == Phase.WAVE_CONFIG) { player.closeContainer(); sendToLobby(player, false); }
                 else if (phase == Phase.PREP) {
                     player.closeContainer(); player.getInventory().clearContent(); player.setGameMode(GameType.SURVIVAL);
                     protect(player, false); player.setHealth(player.getMaxHealth()); player.getFoodData().setFoodLevel(20);
