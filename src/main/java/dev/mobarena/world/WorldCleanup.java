@@ -114,8 +114,13 @@ public final class WorldCleanup implements PhaseListener {
     public static void clean(MinecraftServer server) {
         dev.mobarena.randomizer.RandomizerModule.hook().clear();
         clearRespawnPoints(server);
-        var handles = HANDLES.stream().filter(h -> h.asLevel().getServer() == server).toList();
+        delete(server, HANDLES.stream().filter(h -> h.asLevel().getServer() == server).toList());
+    }
+
+    /** Delete only these game levels, for example the levels of one start preparation. */
+    public static void delete(MinecraftServer server, Collection<RuntimeLevelHandle> handles) {
         for (var handle : handles) {
+            if (!HANDLES.contains(handle)) continue;
             var level = handle.asLevel();
             for (var chunk : FORCED.getOrDefault(level, Set.of())) {
                 level.setChunkForced(chunk.x(), chunk.z(), false);

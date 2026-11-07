@@ -21,6 +21,10 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 ## 3. Preparation phase (`PREP`)
 - Default duration: 45 min (`prepTimeSeconds = 2700`).
 - At game start, the mod makes a new random seed. Both teams get a new world with this seed. One world per team.
+- `/ma start` first prepares the worlds and replies "Preparing the game worlds. The game starts when they are ready." The players stay in the lobby. The chunks load in the background, so the server does not stop for long.
+  - When the worlds are ready, the mod sends "Game started." to all players and `PREP` starts. The `PREP` timer starts at this moment.
+  - If a team has no online player at this moment, the mod cancels the start and deletes the prepared worlds.
+  - `/ma stop` during the preparation cancels it and deletes the prepared worlds.
 - The worlds are new each game. The mod deletes the old worlds at game end.
 - Team dimensions: each team has its own overworld, its own Nether **and its own End** (same seed for both teams).
   - A Nether portal in the team overworld links only to the team Nether, and back.
@@ -146,8 +150,8 @@ Root: `/mobarena`, alias `/ma`.
 | `/ma team random` | 2 | Shuffle all lobby players into 2 teams (size difference max 1) |
 | `/ma team remove <player>` | 2 | Remove a player from the team |
 | `/ma team list` | 0 | Show the teams |
-| `/ma start` | 2 | Start the game |
-| `/ma stop` | 2 | Cancel the game, back to lobby |
+| `/ma start` | 2 | Prepare the game worlds, then start the game (section 3) |
+| `/ma stop` | 2 | Cancel the game or the world preparation, back to lobby |
 | `/ma skip` | 2 | End the current phase now (for tests) |
 | `/ma config` | 2 | Open the config chest menu |
 | `/ma config get <key>` / `set <key> <value>` / `reset` | 2 | Read or change one config value |

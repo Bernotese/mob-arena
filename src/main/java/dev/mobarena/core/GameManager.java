@@ -38,9 +38,9 @@ public final class GameManager {
     public boolean start(MinecraftServer server, Map<UUID, TeamId> teams, Set<UUID> online) {
         return start(server, teams, online, new Random().nextLong());
     }
-    /** True in the lobby when each team has an online player. */
+    /** True in the lobby when each team has an online player and no start preparation runs. */
     public boolean canStart(Map<UUID, TeamId> teams, Set<UUID> online) {
-        if (phase != Phase.LOBBY || context != null || transitioning) return false;
+        if (phase != Phase.LOBBY || context != null || transitioning || preparer.busy()) return false;
         for (TeamId team : TeamId.values()) if (online.stream().noneMatch(id -> teams.get(id) == team)) return false;
         return true;
     }

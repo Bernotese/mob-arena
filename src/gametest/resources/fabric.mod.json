@@ -18,6 +18,7 @@
       "dev.mobarena.backpack.BackpackLifecycleGameTest",
       "dev.mobarena.world.WorldGameTest",
       "dev.mobarena.world.StartPrepGameTest",
+      "dev.mobarena.gametest.TeleportSupportGameTest",
       "dev.mobarena.arena.ArenaGameTest",
       "dev.mobarena.debug.DebugGameTest",
       "dev.mobarena.gametest.FullGameTest",

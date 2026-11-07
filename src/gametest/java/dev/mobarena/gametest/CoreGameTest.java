@@ -18,7 +18,8 @@ public class CoreGameTest {
             game.preparer().cancel(server); game.stop(); TeamManager.get().remove(red); TeamManager.get().remove(blue);
             server.getPlayerList().remove(red); server.getPlayerList().remove(blue);
         };
-        try {
+        TestEnd.run(helper, cleanup);
+        {
             TeamManager.get().assign(red, TeamId.RED); TeamManager.get().assign(blue, TeamId.BLUE);
             var dispatcher = server.getCommands().getDispatcher();
             var source = server.createCommandSourceStack().withPermission(PermissionSet.ALL_PERMISSIONS);
@@ -46,7 +47,7 @@ public class CoreGameTest {
                     helper.assertTrue(red.experienceLevel == 0 && red.totalExperience == 0 && red.experienceProgress == 0, "Stop clears experience");
                     helper.assertTrue(red.gameMode.getGameModeForPlayer() == GameType.ADVENTURE, "Lobby uses adventure");
                 } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) { throw new AssertionError(e); } })
-                .thenExecute(cleanup).thenSucceed();
-        } catch (RuntimeException | Error e) { cleanup.run(); throw e; }
+                .thenSucceed();
+        }
     }
 }

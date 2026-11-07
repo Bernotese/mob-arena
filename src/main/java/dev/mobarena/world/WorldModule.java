@@ -34,6 +34,7 @@ public final class WorldModule {
             var world = worlds.get(team);
             player.teleport(new TeleportTransition(world.overworld().asLevel(), Vec3.atBottomCenterOf(world.prepSpawn()),
                     Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
+            dev.mobarena.core.Teleports.clearSupport(player);
         });
     }
     public static void init(LobbyManager lobby) {

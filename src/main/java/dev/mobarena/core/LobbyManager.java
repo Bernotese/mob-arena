@@ -62,6 +62,7 @@ public final class LobbyManager implements PhaseListener {
         ReturnPosition pos = returns.remove(player.getUUID());
         if (pos != null && player.level().getServer().getLevel(pos.level.dimension()) != null) {
             player.teleportTo(pos.level, pos.x, pos.y, pos.z, Set.of(), pos.yaw, pos.pitch, true);
+            Teleports.clearSupport(player);
             player.setGameMode(game.phase() == Phase.PREP ? GameType.SURVIVAL : GameType.SPECTATOR);
             protect(player, player.isSpectator());
         } else {
@@ -70,6 +71,7 @@ public final class LobbyManager implements PhaseListener {
             else {
                 var data = level.getRespawnData();
                 player.teleportTo(level, data.pos().getX() + 0.5, data.pos().getY(), data.pos().getZ() + 0.5, Set.of(), data.yaw(), data.pitch(), true);
+                Teleports.clearSupport(player);
                 player.setGameMode(game.phase() == Phase.PREP ? GameType.SURVIVAL : GameType.SPECTATOR);
                 protect(player, player.isSpectator());
             }
@@ -138,6 +140,7 @@ public final class LobbyManager implements PhaseListener {
     public void sendToLobby(ServerPlayer player, boolean spectator) {
         prepare(player.level().getServer());
         player.teleportTo(player.level().getServer().overworld(), spawn.x, spawn.y, spawn.z, Set.of(), spawn.yaw, spawn.pitch, true);
+        Teleports.clearSupport(player);
         player.setGameMode(spectator ? GameType.SPECTATOR : GameType.ADVENTURE);
         protect(player, true);
     }

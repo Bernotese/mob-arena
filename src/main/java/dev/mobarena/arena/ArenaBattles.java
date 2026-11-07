@@ -96,6 +96,7 @@ public final class ArenaBattles implements AutoCloseable {
         if (target == null) return;
         Vec3 pos = Vec3.atBottomCenterOf(target.layout().teamSpawn()).add(0, 4, 0);
         player.teleportTo(target.level(), pos.x, pos.y, pos.z, Set.of(), player.getYRot(), 30, true);
+        dev.mobarena.core.Teleports.clearSupport(player);
     }
 
     /** LobbyManager rejoin hook for ARENA and SUDDEN_DEATH (SPEC 2: back to the team, with respawn timer). */
