@@ -58,7 +58,9 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 ## 5. Team backpack
 - At the start of `PREP`, each player gets one team backpack. The item is a vanilla `bundle` with a custom name, a custom data tag `mobarena:team_backpack`, and **no** `bundle_contents` component (so the vanilla bundle logic does not run).
 - Right click (use) opens a 27-slot chest menu (`generic_9x3`). This inventory is shared by all players of the team. Changes show live to all viewers.
-- The team inventory stays in server memory and in the game save data. It is not lost on death.
+- The team inventory stays in server memory only (not saved to disk, because a server stop cancels the game). It is not lost on death.
+- Right click on a block or an entity with the backpack opens the backpack. It never puts the backpack into an item frame, an armor stand, a pot, a shelf or an allay.
+- The backpack cannot go into a bundle or a shulker box item.
 - The player cannot drop the backpack, put it in a container, or put it into the backpack. If the backpack is missing (for example after a bug), the mod gives a new one.
 - The backpack works in `PREP`, `WAVE_CONFIG` and `ARENA`. At game end, the mod clears it.
 
