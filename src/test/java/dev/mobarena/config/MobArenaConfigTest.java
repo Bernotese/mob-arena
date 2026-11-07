@@ -31,6 +31,8 @@ class MobArenaConfigTest {
     }
     @Test void sharedBoundsRejectBothSidesAndAcceptRange() throws Exception {
         ConfigStore store = new ConfigStore(directory.resolve("bounds.json"));
+        var missing = assertThrows(IllegalArgumentException.class, () -> ConfigBounds.requireBounds("missingInt"));
+        assertTrue(missing.getMessage().contains("No ConfigBounds entry for integer key: missingInt"));
         assertEquals(new ConfigBounds.Bounds(60, 14400), store.bounds("prepTimeSeconds"));
         assertEquals(new ConfigBounds.Bounds(10, 500), store.bounds("maxAliveMobs"));
         store.set("maxAliveMobs", "250"); assertEquals(250, store.current().maxAliveMobs);

@@ -11,7 +11,8 @@
       "dev.mobarena.gametest.LobbyGameTest",
       "dev.mobarena.randomizer.RandomizerGameTest",
       "dev.mobarena.backpack.BackpackGameTest",
-      "dev.mobarena.backpack.BackpackGuardGameTest"
+      "dev.mobarena.backpack.BackpackGuardGameTest",
+      "dev.mobarena.backpack.BackpackLifecycleGameTest"
     ]
   },
   "depends": {

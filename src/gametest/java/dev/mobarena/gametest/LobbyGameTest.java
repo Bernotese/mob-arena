@@ -84,6 +84,12 @@ public class LobbyGameTest {
             helper.assertTrue(!lobby.needsRescue(player), "Creative admins can move below the platform");
             player.setGameMode(GameType.SPECTATOR);
             helper.assertTrue(!lobby.needsRescue(player), "Spectator admins can move below the platform");
+            server.getPlayerList().deop(profile); player.setGameMode(GameType.ADVENTURE);
+            var nether = server.getLevel(net.minecraft.world.level.Level.NETHER);
+            player.teleportTo(nether, x + 100, nether.getMinY() - 1, z, Set.of(), 0, 0, true);
+            helper.assertTrue(lobby.needsRescue(player), "Protected players below another dimension need rescue");
+            lobby.tick(server);
+            helper.assertTrue(player.level() == server.overworld(), "Void rescue returns protected players from other dimensions");
             helper.succeed();
         } finally { server.getPlayerList().deop(profile); cleanup(player); Files.deleteIfExists(path); Files.deleteIfExists(path.getParent()); }
     }

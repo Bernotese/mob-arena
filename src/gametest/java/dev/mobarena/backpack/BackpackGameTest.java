@@ -1,6 +1,7 @@
 package dev.mobarena.backpack;
 
 import dev.mobarena.gametest.TestPlayers;
+import dev.mobarena.team.TeamId;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.component.DataComponents;
@@ -21,9 +22,9 @@ public class BackpackGameTest {
         ServerPlayer first = TestPlayers.create(helper);
         ServerPlayer second = TestPlayers.create(helper);
         TeamBackpack storage = new TeamBackpack();
-        SimpleContainer red = storage.inventory("red");
+        SimpleContainer red = storage.inventory(TeamId.RED);
         ChestMenu a = ChestMenu.threeRows(1, first.getInventory(), red);
-        ChestMenu b = ChestMenu.threeRows(2, second.getInventory(), storage.inventory("red"));
+        ChestMenu b = ChestMenu.threeRows(2, second.getInventory(), storage.inventory(TeamId.RED));
         int[] seen = {0, 0};
         a.addSlotListener(listener(seen, 0));
         b.addSlotListener(listener(seen, 1));
@@ -31,8 +32,7 @@ public class BackpackGameTest {
         a.broadcastChanges();
         b.broadcastChanges();
         helper.assertTrue(seen[0] == 7 && seen[1] == 7, "Both viewers receive shared changes");
-        helper.assertTrue(storage.inventory("blue").isEmpty(), "Enemy storage is separate");
-        helper.assertTrue(storage.isDirty(), "Changes mark save data dirty");
+        helper.assertTrue(storage.inventory(TeamId.BLUE).isEmpty(), "Enemy storage is separate");
         helper.succeed();
     }
 
@@ -46,14 +46,14 @@ public class BackpackGameTest {
     }
 
     @GameTest
-    public void saveRoundTrip(GameTestHelper helper) {
-        TeamBackpack storage = new TeamBackpack();
-        storage.inventory("red").setItem(26, new ItemStack(Items.DIAMOND, 11));
-        var ops = helper.getLevel().registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
-        var encoded = TeamBackpack.TYPE.codec().encodeStart(ops, storage).getOrThrow();
-        TeamBackpack loaded = TeamBackpack.TYPE.codec().parse(ops, encoded).getOrThrow();
-        helper.assertTrue(loaded.inventory("red").getItem(26).getCount() == 11, "Save restores slot and count");
-        helper.assertTrue(loaded.inventory("red").getItem(0).isEmpty(), "Save preserves empty slots");
+    public void storageOnlyLivesInMemory(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        TeamBackpack storage = TeamBackpack.get(server);
+        storage.inventory(TeamId.RED).setItem(26, new ItemStack(Items.DIAMOND, 11));
+        helper.assertTrue(TeamBackpack.get(server) == storage, "One server shares its in-memory storage");
+        helper.assertTrue(new TeamBackpack().inventory(TeamId.RED).isEmpty(), "New storage starts empty");
+        TeamBackpack.release(server);
+        helper.assertTrue(TeamBackpack.get(server).inventory(TeamId.RED).isEmpty(), "Server release discards inventory state");
         helper.succeed();
     }
 
@@ -84,16 +84,16 @@ public class BackpackGameTest {
     @GameTest
     public void deathAndMissingItemRecovery(GameTestHelper helper) {
         ServerPlayer player = TestPlayers.create(helper);
-        BackpackModule.setAccess(p -> p == player ? "death-test" : null);
+        BackpackModule.setAccess(p -> p == player ? TeamId.RED : null);
         try {
             GuardedItems.restore(player);
             TeamBackpack storage = new TeamBackpack();
-            storage.inventory("death-test").setItem(0, new ItemStack(Items.EMERALD, 3));
+            storage.inventory(TeamId.RED).setItem(0, new ItemStack(Items.EMERALD, 3));
             player.die(player.damageSources().genericKill());
             helper.assertTrue(hasBackpack(player), "Backpack stays in its slot before recovery");
             GuardedItems.restore(player);
             helper.assertTrue(hasBackpack(player), "Backpack remains available after death");
-            helper.assertTrue(storage.inventory("death-test").getItem(0).getCount() == 3, "Death preserves team storage");
+            helper.assertTrue(storage.inventory(TeamId.RED).getItem(0).getCount() == 3, "Death preserves team storage");
             player.getInventory().clearContent();
             GuardedItems.restore(player);
             helper.assertTrue(hasBackpack(player), "Missing backpack is replaced");
@@ -102,7 +102,7 @@ public class BackpackGameTest {
             GuardedItems.restore(player);
             helper.assertTrue(hasBackpack(player), "Full inventory still receives backpack");
         } finally {
-            BackpackModule.setAccess(p -> null);
+            BackpackModule.useGameAccess();
         }
         helper.succeed();
     }

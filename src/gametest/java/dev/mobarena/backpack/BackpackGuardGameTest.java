@@ -1,6 +1,7 @@
 package dev.mobarena.backpack;
 
 import dev.mobarena.gametest.TestPlayers;
+import dev.mobarena.team.TeamId;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
@@ -24,7 +25,7 @@ import java.util.*;
 
 public class BackpackGuardGameTest {
     private static void cleanup(ServerPlayer player) {
-        player.closeContainer(); BackpackModule.setAccess(p -> null);
+        player.closeContainer(); BackpackModule.useGameAccess();
         player.level().getServer().getPlayerList().remove(player); player.discard();
     }
 
@@ -71,7 +72,7 @@ public class BackpackGuardGameTest {
             player.getInventory().setItem(5, main); player.setItemSlot(EquipmentSlot.OFFHAND, offhand);
             player.getInventory().setItem(6, new ItemStack(Items.STONE, 2));
             player.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
-            BackpackModule.setAccess(p -> p == player ? "death-slots" : null);
+            BackpackModule.setAccess(p -> p == player ? TeamId.RED : null);
             BackpackModule.open(player);
             player.die(player.damageSources().genericKill());
             helper.assertTrue(player.getInventory().getItem(5) == main, "Death preserves the original main inventory stack before restore");
@@ -90,7 +91,7 @@ public class BackpackGuardGameTest {
     public void guardedRecoveryKeepsOtherGuardedSlots(GameTestHelper helper) {
         ServerPlayer player = TestPlayers.create(helper);
         try {
-            BackpackModule.setAccess(p -> p == player ? "full-inventory" : null);
+            BackpackModule.setAccess(p -> p == player ? TeamId.RED : null);
             for (int i = 0; i < 36; i++) player.getInventory().setItem(i, new ItemStack(Items.STONE, 64));
             String key = "mobarena:test_wave_item";
             ItemStack guarded = new ItemStack(Items.PAPER);
@@ -109,7 +110,7 @@ public class BackpackGuardGameTest {
     public void worldInteractionsOpenBackpackWithoutStoringIt(GameTestHelper helper) {
         ServerPlayer player = TestPlayers.create(helper);
         try {
-            BackpackModule.setAccess(p -> p == player ? "world-use" : null);
+            BackpackModule.setAccess(p -> p == player ? TeamId.RED : null);
             player.setItemInHand(InteractionHand.MAIN_HAND, BackpackItem.create());
             var level = helper.getLevel();
             for (var block : List.of(Blocks.DECORATED_POT, Blocks.OAK_SHELF)) {
