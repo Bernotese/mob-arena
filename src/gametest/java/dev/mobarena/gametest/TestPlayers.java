@@ -10,14 +10,16 @@ import net.minecraft.server.network.CommonListenerCookie;
 import java.util.UUID;
 
 /** Online test player with real game-mode behavior and an in-memory connection. */
-final class TestPlayers {
+public final class TestPlayers {
     private TestPlayers() {}
-    static ServerPlayer create(GameTestHelper helper) {
+    public static ServerPlayer create(GameTestHelper helper) { return create(helper, player -> {}); }
+    public static ServerPlayer create(GameTestHelper helper, java.util.function.Consumer<ServerPlayer> beforeJoin) {
         UUID id = UUID.randomUUID();
         GameProfile profile = new GameProfile(id, "test_" + id.toString().substring(0, 8));
         var cookie = CommonListenerCookie.createInitial(profile, false);
         var server = helper.getLevel().getServer();
         ServerPlayer player = new ServerPlayer(server, helper.getLevel(), profile, cookie.clientInformation());
+        beforeJoin.accept(player);
         Connection connection = new Connection(PacketFlow.SERVERBOUND);
         new EmbeddedChannel(connection);
         server.getPlayerList().placeNewPlayer(connection, player, cookie);

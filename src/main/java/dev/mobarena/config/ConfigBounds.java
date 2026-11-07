@@ -19,5 +19,10 @@ public final class ConfigBounds {
         Map.entry("maxAliveMobs", new Bounds(10, 500)),
         Map.entry("endScreenSeconds", new Bounds(5, 120)));
     private ConfigBounds() {}
+    public static Bounds requireBounds(String key) {
+        Bounds bounds = bounds(key);
+        if (bounds == null) throw new IllegalArgumentException("No ConfigBounds entry for integer key: " + key);
+        return bounds;
+    }
     public static Bounds bounds(String key) { return VALUES.get(key); }
 }
