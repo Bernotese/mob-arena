@@ -52,6 +52,7 @@ final class RespawnManager {
         if (!diedHere || player.level() != battle.arena().get().level()) {
             var spawn = net.minecraft.world.phys.Vec3.atBottomCenterOf(battle.arena().get().layout().teamSpawn());
             player.teleportTo(battle.arena().get().level(), spawn.x, spawn.y + 2, spawn.z, Set.of(), player.getYRot(), 0, true);
+            dev.mobarena.core.Teleports.clearSupport(player);
         }
         timers.put(player.getUUID(), group.ctx().server().getTickCount() + respawnTicks);
     }

@@ -86,7 +86,7 @@ Status is tracked by `orchestrator`. Each task: owner type, dependencies, done c
 - `TeamManager`: assign, remove, random shuffle (pure logic, unit test), vanilla scoreboard teams with colors, friendly fire off.
 - Lobby: `/ma setlobby`, lobby spawn, adventure mode, no damage in `LOBBY`.
 - Holding area for `WAVE_CONFIG` in the lobby world: teleport all team players there at phase start (invulnerable).
-- Done: unit tests for state machine (fake tick source), config round trip, shuffle. GameTest: `/ma start` with 2 fake players goes to `PREP`.
+- Done: unit tests for state machine (fake tick source), config round trip, shuffle. GameTest: `/ma start` with 2 fake players goes to `PREP` (after the world preparation, see T5).
 
 **T3 – Item randomizer** (Codex). Depends on T1. Can run with T2.
 - `ItemRandomizer`: builds `Map<Item,Item>` from a seed and an item list. Pure logic for the shuffle.
@@ -107,6 +107,7 @@ Status is tracked by `orchestrator`. Each task: owner type, dependencies, done c
 - Arena worlds: void world per team, paste the template, fixed time, no weather, no sun burn for undead.
 - `DefaultArenaBuilder`: round arena, radius ~30, stone floor, some cover, 1 water basin, barrier wall and roof, spawn ring markers.
 - Done: GameTest or `runServer` test: `/ma start` makes 6 prep worlds (overworld, Nether, End per team) with the same seed. A portal in team RED goes to the RED Nether. Arena paste works. `/ma stop` deletes all game worlds.
+- Async start (`WorldPreparer`, added after T5): `/ma start` replies "Preparing the game worlds...", loads the spawn search chunks with tickets over several ticks, and then calls `GameManager.start` with the prepared worlds. A direct `GameManager.start` (tests) still makes the worlds at once. Each tick of the start stays below about 500 ms. Prep tickets are removed 200 ticks after the start, or at cancel. After each teleport to another level, `Teleports.clearSupport` clears the old support block.
 
 **T6 – Mob collection + wave config** (Claude plans, Codex implements). Depends on T2. Can run with T5.
 - `KillAttribution` (SPEC 3.1), `MobPool` per team, action bar message.

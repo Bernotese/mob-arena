@@ -60,10 +60,7 @@ public final class PrepWorldManager implements PhaseListener {
                 var world = worlds.get(team);
                 player.teleport(new TeleportTransition(world.overworld().asLevel(), Vec3.atBottomCenterOf(world.prepSpawn()),
                         Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
-                // The support block of the old level stays set after a teleport to another level.
-                // A ticked (fake) player then reads that position in the prep level and generates
-                // a far chunk on the server thread. Clear it; the next move finds the new support.
-                player.setOnGround(false);
+                dev.mobarena.core.Teleports.clearSupport(player);
             }
         } catch (RuntimeException e) {
             MobArena.LOGGER.error("Cannot create prep worlds", e);

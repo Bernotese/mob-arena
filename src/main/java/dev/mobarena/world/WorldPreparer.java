@@ -82,17 +82,25 @@ public final class WorldPreparer implements dev.mobarena.core.StartPreparer {
     /** Stop a running preparation and delete its worlds. */
     @Override public void cancel(MinecraftServer server) {
         if (job != null && job.server == server) {
-            job.cancelled = true;
-            job.removeTickets();
+            var stopped = job;
+            stopped.cancelled = true;
             job = null;
-            WorldCleanup.clean(server);
+            stopped.removeTickets();
+            WorldCleanup.delete(server, stopped.owned);
         }
         discard();
     }
 
+    /** Delete prepared worlds that no game took. Never touches other game levels. */
     private static void discard() {
-        if (prepared != null) { var server = prepared.server(); prepared = null; WorldCleanup.clean(server); }
+        if (prepared == null) return;
+        var unused = prepared;
+        prepared = null;
+        WorldCleanup.delete(unused.server(), unused.worlds().values().stream().flatMap(TeamWorlds::handles).toList());
     }
+
+    /** The ticket type of the start preparation (for tests). */
+    public static TicketType ticketType() { return ticket; }
 
     private static final class Job {
         final MinecraftServer server;
@@ -101,6 +109,8 @@ public final class WorldPreparer implements dev.mobarena.core.StartPreparer {
         final Consumer<RuntimeException> failed;
         final long started = System.nanoTime();
         final Map<TeamId, RuntimeLevelHandle[]> handles = new EnumMap<>(TeamId.class);
+        /** Every level this job opened, also if a later open fails. */
+        final List<RuntimeLevelHandle> owned = new ArrayList<>();
         final List<Runnable> tickets = new ArrayList<>();
         final List<Runnable> spawnTickets = new ArrayList<>();
         boolean cancelled;
@@ -116,10 +126,10 @@ public final class WorldPreparer implements dev.mobarena.core.StartPreparer {
         void open() {
             step(() -> {
                 for (TeamId team : TeamId.values()) {
-                    handles.put(team, new RuntimeLevelHandle[] {
-                        LevelFactory.open(server, seed, team, WorldKind.PREP_OVERWORLD),
-                        LevelFactory.open(server, seed, team, WorldKind.PREP_NETHER),
-                        LevelFactory.open(server, seed, team, WorldKind.PREP_END)});
+                    var levels = new RuntimeLevelHandle[3];
+                    var kinds = List.of(WorldKind.PREP_OVERWORLD, WorldKind.PREP_NETHER, WorldKind.PREP_END);
+                    for (int i = 0; i < 3; i++) owned.add(levels[i] = LevelFactory.open(server, seed, team, kinds.get(i)));
+                    handles.put(team, levels);
                 }
                 // Same seed and generator: both overworlds have the same origin.
                 origin = TeamSpawnFinder.origin(overworld(TeamId.RED));
@@ -206,7 +216,7 @@ public final class WorldPreparer implements dev.mobarena.core.StartPreparer {
             if (cancelled || job != this) return;
             job = null;
             removeTickets();
-            WorldCleanup.clean(server);
+            WorldCleanup.delete(server, owned);
             failed.accept(e);
         }
 
