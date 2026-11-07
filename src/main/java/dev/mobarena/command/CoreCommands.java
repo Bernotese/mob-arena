@@ -25,6 +25,13 @@ public final class CoreCommands {
     private static int reply(CommandSourceStack source, String text) {
         source.sendSuccess(() -> Component.literal(text), false); return 1;
     }
+    private static Set<UUID> online(net.minecraft.server.MinecraftServer server) {
+        return new HashSet<>(server.getPlayerList().getPlayers().stream().map(ServerPlayer::getUUID).toList());
+    }
+    /** To all players and the server log (an RCON or console source can be gone when the worlds are ready). */
+    private static void broadcast(net.minecraft.server.MinecraftServer server, String text) {
+        server.getPlayerList().broadcastSystemMessage(Component.literal(text), false);
+    }
     private static boolean running(CommandSourceStack source) {
         if (GameManager.get().context() != null) return true;
         source.sendFailure(Component.literal("No game is running.")); return false;
@@ -33,12 +40,28 @@ public final class CoreCommands {
         CommandRegistry.register(root -> {
             root.then(literal("start").requires(CoreCommands::admin).executes(c -> {
                 var server = c.getSource().getServer();
-                boolean started = GameManager.get().start(server, TeamManager.get().assignments(),
-                    new HashSet<>(server.getPlayerList().getPlayers().stream().map(ServerPlayer::getUUID).toList()));
-                if (!started) { c.getSource().sendFailure(Component.literal("Start requires the lobby and an online player in each team.")); return 0; }
-                return reply(c.getSource(), "Game started.");
+                var source = c.getSource();
+                if (GameManager.get().preparer().busy()) { source.sendFailure(Component.literal("The game worlds are already being prepared.")); return 0; }
+                if (!GameManager.get().canStart(TeamManager.get().assignments(), online(server))) {
+                    source.sendFailure(Component.literal("Start requires the lobby and an online player in each team.")); return 0;
+                }
+                // Prepare the worlds over several ticks; PREP starts when they are ready.
+                long seed = new Random().nextLong();
+                GameManager.get().preparer().begin(server, seed, () -> {
+                    boolean started = GameManager.get().start(server, TeamManager.get().assignments(), online(server), seed);
+                    broadcast(server, started ? "Game started." : "Start canceled: each team needs an online player.");
+                    return started;
+                }, error -> {
+                    dev.mobarena.MobArena.LOGGER.error("Cannot prepare game worlds", error);
+                    broadcast(server, "Start failed: cannot prepare the game worlds.");
+                });
+                return reply(source, "Preparing the game worlds. The game starts when they are ready.");
             }));
-            root.then(literal("stop").requires(CoreCommands::admin).executes(c -> { if (!running(c.getSource())) return 0; GameManager.get().stop(); return reply(c.getSource(), "Game stopped."); }));
+            root.then(literal("stop").requires(CoreCommands::admin).executes(c -> {
+                if (GameManager.get().preparer().busy()) { GameManager.get().preparer().cancel(c.getSource().getServer()); return reply(c.getSource(), "Start canceled."); }
+                if (!running(c.getSource())) return 0;
+                GameManager.get().stop(); return reply(c.getSource(), "Game stopped.");
+            }));
             root.then(literal("skip").requires(CoreCommands::admin).executes(c -> { if (!running(c.getSource())) return 0; GameManager.get().endPhaseNow(); return reply(c.getSource(), "Phase ended."); }));
             root.then(literal("status").executes(c -> {
                 GameManager game = GameManager.get(); GameContext ctx = game.context();

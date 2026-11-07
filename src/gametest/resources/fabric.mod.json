@@ -17,13 +17,17 @@
       "dev.mobarena.backpack.BackpackGuardGameTest",
       "dev.mobarena.backpack.BackpackLifecycleGameTest",
       "dev.mobarena.world.WorldGameTest",
+      "dev.mobarena.world.PaletteCacheGameTest",
+      "dev.mobarena.world.StructureLockGameTest",
+      "dev.mobarena.world.StartPrepGameTest",
       "dev.mobarena.arena.ArenaGameTest",
       "dev.mobarena.debug.DebugGameTest",
       "dev.mobarena.gametest.FullGameTest",
       "dev.mobarena.gametest.FullGameStopTest",
       "dev.mobarena.arena.DebugDriverGameTest",
-      "dev.mobarena.arena.SuddenDeathGameTest",
-      "dev.mobarena.gametest.ResultGameTest"
+      "dev.mobarena.gametest.ResultGameTest",
+      "dev.mobarena.gametest.FullResultTest",
+      "dev.mobarena.arena.SuddenDeathGameTest"
     ]
   },
   "depends": {

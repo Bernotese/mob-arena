@@ -32,9 +32,57 @@ public final class WorldCleanup implements PhaseListener {
      */
     static void onUnload(MinecraftServer server, net.minecraft.server.level.ServerLevel level) {
         if (!OPEN.remove(level) || server.getLevel(level.dimension()) == level) return;
-        try { level.close(); }
+        long start = System.nanoTime();
+        try { closeWithoutSave(level); }
         catch (Exception e) { MobArena.LOGGER.error("Cannot close removed game level {}", level.dimension().identifier(), e); }
+        long ms = (System.nanoTime() - start) / 1_000_000;
+        // This runs on the server thread, so a slow close shows up in the log.
+        if (ms >= 250) MobArena.LOGGER.info("Closed removed game level {} in {} ms", level.dimension().identifier(), ms);
+        else MobArena.LOGGER.debug("Closed removed game level {} in {} ms", level.dimension().identifier(), ms);
     }
+
+    /**
+     * ServerLevel.close() saves every loaded chunk and entity with a flush, and each I/O worker then
+     * writes its whole queue (Fantasy unloads all chunks before the delete) before it shuts down.
+     * That blocks the server thread for seconds per level. The folder is deleted next, so drop the
+     * queued writes, skip the save, and only close the storages.
+     */
+    private static void closeWithoutSave(net.minecraft.server.level.ServerLevel level) throws java.io.IOException {
+        var chunkMap = level.getChunkSource().chunkMap;
+        var entities = (net.minecraft.world.level.chunk.storage.EntityStorage) ((dev.mobarena.world.mixin.EntitySectionManagerAccessor)
+                ((dev.mobarena.world.mixin.ServerLevelAccessor) level).mobarena$entityManager()).mobarena$permanentStorage();
+        var poi = ((dev.mobarena.world.mixin.SectionStorageAccessor) ((dev.mobarena.world.mixin.ChunkMapAccessor) chunkMap).mobarena$poiManager()).mobarena$storage();
+        var drops = new ArrayList<java.util.concurrent.CompletableFuture<Object>>();
+        for (var storage : List.of(chunkMap, poi, ((dev.mobarena.world.mixin.EntityStorageAccessor) entities).mobarena$storage())) {
+            var worker = (dev.mobarena.world.mixin.IOWorkerAccessor) ((dev.mobarena.world.mixin.SimpleRegionStorageAccessor) storage).mobarena$worker();
+            // pendingWrites belongs to the worker thread; clear it there, ahead of the queued stores.
+            drops.add(worker.mobarena$executor().scheduleWithResult(IO_FOREGROUND, done -> {
+                worker.mobarena$pendingWrites().clear();
+                done.complete(null);
+            }));
+        }
+        for (var drop : drops) {
+            try { drop.get(5, java.util.concurrent.TimeUnit.SECONDS); }
+            catch (Exception e) { MobArena.LOGGER.warn("Cannot drop queued writes of {}: {}", level.dimension().identifier(), e.toString()); }
+        }
+        // Worldgen and light dispatchers, POI storage, and chunk storage. No fsync: the folder is deleted next.
+        CLOSING_DELETED.set(true);
+        try {
+            chunkMap.close();
+            entities.close();
+        } finally { CLOSING_DELETED.remove(); }
+        // Saved data: do not save the dirty data again, only wait for writes that already run.
+        var pendingData = ((dev.mobarena.world.mixin.SavedDataStorageAccessor) level.getDataStorage()).mobarena$pendingWrites();
+        if (pendingData != null) {
+            try { pendingData.get(5, java.util.concurrent.TimeUnit.SECONDS); }
+            catch (Exception e) { MobArena.LOGGER.warn("Cannot wait for saved data of {}: {}", level.dimension().identifier(), e.toString()); }
+        }
+    }
+    private static final ThreadLocal<Boolean> CLOSING_DELETED = ThreadLocal.withInitial(() -> false);
+    /** True only on the thread that closes a removed game level (see RegionFileSyncMixin). */
+    public static boolean closingDeletedLevel() { return CLOSING_DELETED.get(); }
+    /** IOWorker.Priority.FOREGROUND.ordinal(). */
+    private static final int IO_FOREGROUND = 0;
 
     public static void clearRespawnPoints(MinecraftServer server) {
         for (var player : server.getPlayerList().getPlayers()) {
