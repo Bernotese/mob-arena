@@ -44,7 +44,7 @@ public class ArenaGameTest {
     }
 
     /** PLAN T7 done criterion 1, through the real WAVE_CONFIG -> ARENA path (enemy plan, config timers). */
-    @GameTest(environment = "mobarena-gametest:arena_flow", maxTicks = 2400, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_flow", maxTicks = 2400, skyAccess = true)
     public void planFromEnemyWavesSpawnsClearsAndCoolsDown(GameTestHelper h) {
         var f = new ArenaFixture(h, false, false);
         // BLUE collects 3 zombies; RED fights BLUE's plan.
@@ -77,7 +77,7 @@ public class ArenaGameTest {
     }
 
     /** PLAN T7 done criterion 2: all players dead -> teamEliminated is called once. */
-    @GameTest(environment = "mobarena-gametest:arena_down", maxTicks = 400, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_down", maxTicks = 400, skyAccess = true)
     public void allPlayersDownEliminatesOnce(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
         h.startSequence()
@@ -96,7 +96,7 @@ public class ArenaGameTest {
             .thenSucceed();
     }
 
-    @GameTest(environment = "mobarena-gametest:arena_respawn", maxTicks = 600, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_respawn", maxTicks = 600, skyAccess = true)
     public void secondPlayerKeepsTeamAliveAndRespawns(GameTestHelper h) {
         var f = new ArenaFixture(h, true, true);
         f.group().setRespawnTicks(40);
@@ -124,7 +124,7 @@ public class ArenaGameTest {
             .thenSucceed();
     }
 
-    @GameTest(environment = "mobarena-gametest:arena_totem", maxTicks = 300, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_totem", maxTicks = 300, skyAccess = true)
     public void totemSavesTheVanillaWay(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
         h.startSequence()
@@ -141,7 +141,7 @@ public class ArenaGameTest {
             .thenSucceed();
     }
 
-    @GameTest(environment = "mobarena-gametest:arena_slime", maxTicks = 600, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_slime", maxTicks = 600, skyAccess = true)
     public void slimeChildrenKeepTagAndBlockTheClear(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
         var battle = f.run(TeamId.RED, 1, 20, LONG, LONG, Map.of("minecraft:slime", 1), Map.of(ZOMBIE, 1), Map.of());
@@ -173,7 +173,7 @@ public class ArenaGameTest {
             .thenSucceed();
     }
 
-    @GameTest(environment = "mobarena-gametest:arena_neutral", maxTicks = 600, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_neutral", maxTicks = 600, skyAccess = true)
     public void neutralMobsAreAngryPassiveMobsAreNot(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
         var battle = f.run(TeamId.RED, 1, 20, LONG, LONG,
@@ -200,7 +200,7 @@ public class ArenaGameTest {
             .thenSucceed();
     }
 
-    @GameTest(environment = "mobarena-gametest:arena_bounds", maxTicks = 600, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_bounds", maxTicks = 600, skyAccess = true)
     public void boundsTeleportBackAndGlowAfterTime(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
         var battle = f.run(TeamId.RED, 1, 20, LONG, 60, Map.of("minecraft:cow", 2), Map.of(), Map.of());
@@ -225,7 +225,7 @@ public class ArenaGameTest {
             .thenSucceed();
     }
 
-    @GameTest(environment = "mobarena-gametest:arena_time", maxTicks = 400, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_time", maxTicks = 400, skyAccess = true)
     public void waveTimeLimitEliminates(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
         f.run(TeamId.RED, 1, 20, 60, LONG, Map.of("minecraft:cow", 2), Map.of(), Map.of());
@@ -238,7 +238,7 @@ public class ArenaGameTest {
             .thenSucceed();
     }
 
-    @GameTest(environment = "mobarena-gametest:arena_water", maxTicks = 400, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_water", maxTicks = 400, skyAccess = true)
     public void waterMobsUseBasinOrAWaterBlock(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
         var real = f.arena(TeamId.RED);
@@ -258,7 +258,7 @@ public class ArenaGameTest {
             .thenSucceed();
     }
 
-    @GameTest(environment = "mobarena-gametest:arena_rules", maxTicks = 400, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_rules", maxTicks = 400, skyAccess = true)
     public void naturalSpawnsAndEggsBlockedSummonsTagged(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
         var battle = f.run(TeamId.RED, 1, 20, LONG, LONG, Map.of("minecraft:cow", 1), Map.of(), Map.of());
@@ -286,7 +286,7 @@ public class ArenaGameTest {
             .thenSucceed();
     }
 
-    @GameTest(environment = "mobarena-gametest:arena_spectate", maxTicks = 600, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_spectate", maxTicks = 600, skyAccess = true)
     public void rejoinDuringFightStartsRespawnTimer(GameTestHelper h) {
         var f = new ArenaFixture(h, true, true);
         f.group().setRespawnTicks(30);
@@ -303,7 +303,7 @@ public class ArenaGameTest {
     }
 
     /** T8b reuse: one wave with all 3 enemy waves, tag wave 4, no cooldown, own listener. */
-    @GameTest(environment = "mobarena-gametest:arena_sudden", maxTicks = 600, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_sudden", maxTicks = 600, skyAccess = true)
     public void suddenDeathRunnerMergesEnemyWaves(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
         var plans = new EnumMap<TeamId, dev.mobarena.wave.WavePlan>(TeamId.class);
@@ -328,7 +328,7 @@ public class ArenaGameTest {
                 net.minecraft.world.entity.monster.cubemob.Slime.class), e -> !e.isRemoved());
     }
 
-    @GameTest(environment = "mobarena-gametest:arena_discard", maxTicks = 600, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_discard", maxTicks = 600, skyAccess = true)
     public void dyingSlimeOnEliminationOrCloseLeavesNoSlimes(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
         var red = f.run(TeamId.RED, 1, 20, LONG, LONG, Map.of("minecraft:slime", 1), Map.of(), Map.of());
@@ -358,7 +358,7 @@ public class ArenaGameTest {
             .thenSucceed();
     }
 
-    @GameTest(environment = "mobarena-gametest:arena_safety", maxTicks = 600, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_safety", maxTicks = 600, skyAccess = true)
     public void oldWaveSlimeSplitLeavesNoChildren(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
         var battle = f.run(TeamId.RED, 1, 20, LONG, LONG, Map.of(ZOMBIE, 1), Map.of(), Map.of());
@@ -380,7 +380,7 @@ public class ArenaGameTest {
             .thenSucceed();
     }
 
-    @GameTest(environment = "mobarena-gametest:arena_golem", maxTicks = 600, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_golem", maxTicks = 600, skyAccess = true)
     public void playerBuiltGolemsAndWithersAreBlocked(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
         h.startSequence()
@@ -409,7 +409,7 @@ public class ArenaGameTest {
             .thenSucceed();
     }
 
-    @GameTest(environment = "mobarena-gametest:arena_infight", maxTicks = 600, skyAccess = true)
+    @GameTest(environment = "mobarena:arena_infight", maxTicks = 600, skyAccess = true)
     public void waveMobsDoNotFightEachOther(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
         var battle = f.run(TeamId.RED, 1, 20, LONG, LONG,
