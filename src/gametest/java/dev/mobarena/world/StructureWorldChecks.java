@@ -48,9 +48,7 @@ final class StructureWorldChecks {
             // Generate the located chunks so the structure placement is tested, not only its candidate position.
             var chunk = red.getChunk(redVillage.getX() >> 4, redVillage.getZ() >> 4);
             h.assertTrue(!chunk.getAllStarts().isEmpty(), "W3 a village structure is generated");
-            for (var pos : new BlockPos[]{new BlockPos(0, 63, 0), new BlockPos(16, 70, 16), new BlockPos(-16, 50, 0)}) {
-                h.assertValueEqual(red.getBlockState(pos), blue.getBlockState(pos), "W1 noise terrain agrees for equal seeds");
-            }
+            NoiseWorldChecks.verify(h, red, blue);
         } finally {
             for (var handle : handles) handle.delete();
             try { field.set(settings, options); }
