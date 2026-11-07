@@ -161,18 +161,18 @@ Root: `/mobarena`, alias `/ma`.
 - File: `config/mob-arena.json`. In-game changes save to this file at once.
 - Changes during a running game apply from the next phase. **[DEFAULT]**
 
-| Key | Type | Default |
-|---|---|---|
-| `prepTimeSeconds` | int | 2700 |
-| `waveConfigTimeSeconds` | int | 180 |
-| `waveCountdownSeconds` | int | 10 |
-| `waveCooldownSeconds` | int | 20 |
-| `waveMaxTimeSeconds` | int | 900 |
-| `suddenDeathMaxTimeSeconds` | int | 600 |
-| `arenaRespawnSeconds` | int | 10 |
-| `mobGlowAfterSeconds` | int | 60 |
-| `maxAliveMobs` | int | 150 |
-| `endScreenSeconds` | int | 15 |
-| `randomizerEnabled` | bool | true |
-| `mobBlacklist` | list of entity ids | `ender_dragon, player, armor_stand, cod, salmon, tropical_fish, pufferfish` |
-| `arenaTemplate` | string | `default` |
+| Key | Type | Default | Range |
+|---|---|---|---|
+| `prepTimeSeconds` | int | 2700 | 60–14400 |
+| `waveConfigTimeSeconds` | int | 180 | 10–1800 |
+| `waveCountdownSeconds` | int | 10 | 3–60 |
+| `waveCooldownSeconds` | int | 20 | 1–300 |
+| `waveMaxTimeSeconds` | int | 900 | 60–3600 |
+| `suddenDeathMaxTimeSeconds` | int | 600 | 60–3600 |
+| `arenaRespawnSeconds` | int | 10 | 1–120 |
+| `mobGlowAfterSeconds` | int | 60 | 1–900 |
+| `maxAliveMobs` | int | 150 | 10–500 |
+| `endScreenSeconds` | int | 15 | 5–120 |
+| `randomizerEnabled` | bool | true | – |
+| `mobBlacklist` | list of entity ids | `ender_dragon, player, armor_stand, cod, salmon, tropical_fish, pufferfish` | – |
+| `arenaTemplate` | string | `default` | – |
