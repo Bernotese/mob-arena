@@ -27,10 +27,10 @@ class BattleFlowTest {
         assertEquals(40,f.elapsedTicks());
     }
     @Test void queueMustFinishBeforeClear() {
-        var f=flow(1,0,0,100,50,false); f.tick(live);
+        var f=flow(1,0,0,100,50,false); f.tick(live); f.tick(live);
         assertTrue(f.tick(new TickInput(true,false,0,0,false,true)).isEmpty());
         assertEquals(BattleFlow.State.FIGHT,f.state());
-        assertEquals(List.of(new BattleEvent.WaveCleared(1),new BattleEvent.Finished(2)),f.tick(clear));
+        assertEquals(List.of(new BattleEvent.WaveCleared(1),new BattleEvent.Finished(3)),f.tick(clear));
         assertTrue(f.tick(live).isEmpty());
     }
     @Test void cooldownThenNextCountdown() {
@@ -48,27 +48,28 @@ class BattleFlowTest {
     }
     @Test void emptyWaveClearsAtSpawn() {
         var f=flow(1,0,0,100,50,true);
-        assertEquals(List.of(new BattleEvent.SpawnWave(1),new BattleEvent.WaveCleared(1),new BattleEvent.Finished(0)),f.tick(live));
+        assertEquals(List.of(new BattleEvent.Countdown(1,0)),f.tick(live));
+        assertEquals(List.of(new BattleEvent.SpawnWave(1),new BattleEvent.WaveCleared(1),new BattleEvent.Finished(1)),f.tick(live));
     }
     @Test void glowOnceAndTimeoutIncludesKills() {
-        var f=flow(1,0,0,3,1,false); f.tick(live);
+        var f=flow(1,0,0,3,1,false); f.tick(live); f.tick(live);
         assertEquals(List.of(new BattleEvent.Glow(1)),f.tick(live));
         assertTrue(f.tick(live).isEmpty());
-        assertEquals(List.of(new BattleEvent.Eliminated(new TeamProgress(0,2,3),BattleEvent.Reason.TIME)),
+        assertEquals(List.of(new BattleEvent.Eliminated(new TeamProgress(0,2,4),BattleEvent.Reason.TIME)),
             f.tick(new TickInput(true,false,1,2,false,true)));
         assertTrue(f.tick(clear).isEmpty());
     }
     @Test void clearWinsOverTimeout() {
-        var f=flow(1,0,0,1,1,false); f.tick(live);
-        assertEquals(List.of(new BattleEvent.WaveCleared(1),new BattleEvent.Finished(1)),f.tick(clear));
+        var f=flow(1,0,0,1,1,false); f.tick(live); f.tick(live);
+        assertEquals(List.of(new BattleEvent.WaveCleared(1),new BattleEvent.Finished(2)),f.tick(clear));
     }
     @Test void allDownWinsOverClear() {
-        var f=flow(1,0,0,100,50,false); f.tick(live);
+        var f=flow(1,0,0,100,50,false); f.tick(live); f.tick(live);
         var events=f.tick(new TickInput(true,true,0,3,true,true));
         assertEquals(BattleEvent.Reason.ALL_DOWN,((BattleEvent.Eliminated)events.getFirst()).reason());
         assertEquals(0,f.progress().clearedWaves());
         assertEquals(3,f.progress().killsInCurrentWave());
-        assertEquals(1,f.elapsedTicks());
+        assertEquals(2,f.elapsedTicks());
     }
     @Test void allDownInCountdownAndCooldown() {
         for(boolean cooldown:List.of(false,true)) {
@@ -83,15 +84,26 @@ class BattleFlowTest {
             assertTrue(f.tick(new TickInput(false,false,0,0,true,false)).isEmpty());
         assertEquals(BattleFlow.State.WAITING_ARENA,f.state());
         assertEquals(0,f.elapsedTicks());
+        assertEquals(List.of(new BattleEvent.Countdown(1,0)),
+            f.tick(new TickInput(true,false,0,0,true,false)));
         assertEquals(BattleEvent.Reason.NO_PLAYERS,((BattleEvent.Eliminated)
             f.tick(new TickInput(true,false,0,0,true,false)).getFirst()).reason());
         assertTrue(f.tick(live).isEmpty());
     }
     @Test void zeroTimersClearAllEmptyWavesImmediately() {
         var f=flow(3,0,0,100,50,true);
+        assertEquals(List.of(new BattleEvent.Countdown(1,0)),f.tick(live));
         assertEquals(7,f.tick(live).size());
         assertEquals(BattleFlow.State.FINISHED,f.state());
         assertEquals(3,f.progress().clearedWaves());
+    }
+    @Test void readyTickIgnoresAllDownUntilNextTick() {
+        var f=flow(1,20,0,100,50,false);
+        var down=new TickInput(true,false,0,0,true,true);
+        assertEquals(List.of(new BattleEvent.Countdown(1,1)),f.tick(down));
+        assertEquals(BattleFlow.State.COUNTDOWN,f.state());
+        assertEquals(0,f.elapsedTicks());
+        assertEquals(List.of(new BattleEvent.Eliminated(new TeamProgress(0,0,1),BattleEvent.Reason.ALL_DOWN)),f.tick(down));
     }
     @Test void scriptCopiesWavesAndValidatesTimers() {
         var w=new TreeMap<>(Map.of("zombie",3));

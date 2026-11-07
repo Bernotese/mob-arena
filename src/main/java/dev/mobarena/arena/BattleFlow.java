@@ -30,6 +30,8 @@ public final class BattleFlow {
             if (!in.arenaReady()) return List.of();
             wave = 1;
             state = State.COUNTDOWN;
+            events.add(new BattleEvent.Countdown(1, (script.countdownTicks() + 19) / 20));
+            return List.copyOf(events);
         }
         if (state == State.FIGHT) kills = in.killsInWave();
         if (!in.anyOnline() || in.allDown()) {

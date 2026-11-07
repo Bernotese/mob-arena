@@ -15,7 +15,7 @@ public final class SpawnQueue {
         this.pending = new ArrayDeque<>(orders);
         this.maxAliveMobs = maxAliveMobs;
     }
-    /** Submit a fresh scan that includes all prior spawn reservations. */
+    /** Call after this tick's spawns with a fresh alive count that includes those spawns. */
     public void report(int alive) {
         if (alive < 0) throw new IllegalArgumentException("Negative alive count");
         reportedAlive = alive;
@@ -31,12 +31,14 @@ public final class SpawnQueue {
         return List.copyOf(batch);
     }
 
-    /** Reuse an alive count without clearing reservations; use report for a fresh scan. */
+    /** Submit a fresh report and reserve this tick's spawns. Do not pass stale counts here. */
     public List<SpawnPlanner.SpawnOrder> tick(int alive) {
-        if (alive < 0) throw new IllegalArgumentException("Negative alive count");
-        reportedAlive = alive;
+        report(alive);
         return tick();
     }
+    /** T7b passes this value as TickInput.alive. Call report after the tick's spawns. */
+    public int aliveEstimate() { return reportedAlive + spawnedSinceReport; }
+
     public boolean spawningDone() { return pending.isEmpty(); }
     public int remaining() { return pending.size(); }
 }

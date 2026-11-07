@@ -48,7 +48,7 @@ class SpawnPlannerTest {
         q.report(145);
         int spawned=0;
         for(int tick=0;tick<9;tick++) {
-            spawned+=q.tick(145).size();
+            spawned+=q.tick().size();
             assertTrue(145+spawned<=150);
         }
         assertEquals(5,spawned);
@@ -58,6 +58,24 @@ class SpawnPlannerTest {
         assertTrue(q.tick().isEmpty());
         q.report(0);
         assertEquals(10,q.tick().size());
+    }
+    @Test void freshReportsDrainLargeWave() {
+        var orders=SpawnPlanner.plan(new TreeMap<>(Map.of("zombie",300)),8,0,id->false,42);
+        var q=new SpawnQueue(orders,150);
+        int spawned=0;
+        for(int tick=0;tick<30;tick++) spawned+=q.tick(0).size();
+        assertEquals(300,spawned);
+        assertTrue(q.spawningDone());
+    }
+    @Test void aliveEstimateIncludesUnscannedSpawns() {
+        var orders=SpawnPlanner.plan(new TreeMap<>(Map.of("zombie",3)),8,0,id->false,42);
+        var q=new SpawnQueue(orders,150);
+        q.report(0);
+        assertEquals(3,q.tick().size());
+        assertEquals(3,q.aliveEstimate());
+        assertTrue(q.spawningDone());
+        q.report(2);
+        assertEquals(2,q.aliveEstimate());
     }
     @Test void emptyQueueAndInvalidArguments() {
         assertTrue(new SpawnQueue(List.of(),1).spawningDone());
