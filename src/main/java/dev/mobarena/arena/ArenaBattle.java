@@ -198,6 +198,9 @@ public final class ArenaBattle {
         HudOverrides.of(group.ctx()).clear(team);
     }
 
+    /** Debug driver hook: cancel pending spawns of the current wave. */
+    public void clearQueue() { queue = null; }
+
     int remainingInQueue() { return queue == null ? 0 : queue.remaining(); }
 
     private void hud() {

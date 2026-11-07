@@ -93,6 +93,15 @@ public class ResultGameTest {
             helper.assertTrue(result != null && result.winner().equals(Optional.of(TeamId.RED)), "RED wins");
             helper.assertTrue(result.reason().equals("All waves cleared"), "Reason: " + result.reason());
             helper.assertTrue(HudOverrides.of(f.ctx).result().text().getString().equals("Team RED wins"), "HUD result");
+            var state = dev.mobarena.debug.DebugDriver.state(helper.getLevel().getServer());
+            var verdict = state.getAsJsonObject("verdict");
+            helper.assertTrue(verdict.get("type").getAsString().equals("WIN") && verdict.get("winner").getAsString().equals("RED")
+                    && verdict.get("reason").getAsString().equals("All waves cleared"), "State verdict: " + verdict);
+            var outcomes = state.getAsJsonObject("outcomes");
+            var red = outcomes.getAsJsonObject("RED").getAsJsonObject("arena");
+            var blue = outcomes.getAsJsonObject("BLUE").getAsJsonObject("arena");
+            helper.assertTrue(red.get("type").getAsString().equals("FINISHED") && red.get("ticks").getAsLong() == 100, "State RED outcome: " + red);
+            helper.assertTrue(blue.get("type").getAsString().equals("ELIMINATED") && blue.get("clearedWaves").getAsInt() == 0, "State BLUE outcome: " + blue);
             f.hooks().teamFinished(TeamId.BLUE, 300);
             helper.assertTrue(!f.tracker().dirty(), "Events after the verdict are ignored");
             f.close();
@@ -113,6 +122,11 @@ public class ResultGameTest {
             helper.assertTrue(f.tracker().suddenDeathOutcome(TeamId.RED).orElseThrow() instanceof Outcome.Running,
                     "Both teams run again");
             helper.assertTrue(f.ctx.get(ResultKeys.RESULT) == null, "No result yet");
+            var state = dev.mobarena.debug.DebugDriver.state(helper.getLevel().getServer());
+            helper.assertTrue(state.getAsJsonObject("verdict").get("type").getAsString().equals("SUDDEN_DEATH"), "State verdict: SUDDEN_DEATH");
+            var red = state.getAsJsonObject("outcomes").getAsJsonObject("RED");
+            helper.assertTrue(red.getAsJsonObject("arena").get("type").getAsString().equals("ELIMINATED")
+                    && red.getAsJsonObject("suddenDeath").get("type").getAsString().equals("RUNNING"), "State keeps both outcomes: " + red);
             f.hooks().teamFinished(TeamId.RED, 250);
         });
         f.at(2, () -> {

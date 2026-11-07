@@ -38,6 +38,9 @@ loom {
 			// Run dir 'run/' is in .gitignore.
 			runDir = 'run'
 		}
+        configureEach {
+            if (name == 'server' || name == 'gameTest') vmArg '-Dmobarena.debug=true'
+        }
 	}
 }
 
