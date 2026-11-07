@@ -42,3 +42,14 @@ It checks level folder cleanup after every next startup.
 It runs the default smoke once more to check cleanup after the last comparison.
 It saves the result table and failure traces in `tools/evidence/`.
 Full server and driver logs remain in ignored `run/`.
+
+## T10e scenarios (`--scenario`)
+`python3 tools/smoke.py --scenario s1,s15,s16` (or `all`) runs the T10 section 4 scenarios on `runServer`.
+They use `/ma debug` (the server run config sets `-Dmobarena.debug=true`) and the `MOBARENA_STATE` JSON.
+- S1: PREP kills by `/ma debug kill`, waves by `/ma debug waves`, RED clears 3 waves, BLUE is down in wave 2.
+  Checks: phase order, RED wins by "All waves cleared", END -> LOBBY, no open game level, empty inventories, folders deleted.
+- S15: BLUE fights 300 zombies with `maxAliveMobs` 20 for 40 s while RCON kills 10 per 0.5 s.
+  Checks: never more than 20 wave mobs alive (mod count and `@e[tag=...]`), the queue refills, `/tick query` average < 50 ms.
+- S16: the server stops while both teams fight; the next start must find no Mob Arena level folders.
+The fake players get Resistance V in ARENA, because Carpet players do not fight back.
+Each scenario writes its server log to `run/smoke-<name>.log`.
