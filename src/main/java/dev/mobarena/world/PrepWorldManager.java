@@ -10,7 +10,15 @@ import java.util.*;
 
 public final class PrepWorldManager implements PhaseListener {
     public static Map<TeamId, TeamWorlds> create(GameContext ctx) {
-        // A shutdown can clear the context without phase callbacks. Retire its handles first.
+        // /ma start prepares the worlds without blocking the server thread (WorldPreparer).
+        var prepared = WorldPreparer.take(ctx.server(), ctx.seed());
+        if (prepared != null) {
+            ctx.put(TeamWorlds.KEY, prepared);
+            for (var entry : prepared.entrySet()) ctx.setPrepLevel(entry.getKey(), entry.getValue().overworld().asLevel());
+            return prepared;
+        }
+        // Blocking path for a direct GameManager.start. A shutdown can clear the context without
+        // phase callbacks, so retire its handles first.
         WorldCleanup.clean(ctx.server());
         Map<TeamId, TeamWorlds> teams = new EnumMap<>(TeamId.class);
         ctx.put(TeamWorlds.KEY, teams);
@@ -52,6 +60,10 @@ public final class PrepWorldManager implements PhaseListener {
                 var world = worlds.get(team);
                 player.teleport(new TeleportTransition(world.overworld().asLevel(), Vec3.atBottomCenterOf(world.prepSpawn()),
                         Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
+                // The support block of the old level stays set after a teleport to another level.
+                // A ticked (fake) player then reads that position in the prep level and generates
+                // a far chunk on the server thread. Clear it; the next move finds the new support.
+                player.setOnGround(false);
             }
         } catch (RuntimeException e) {
             MobArena.LOGGER.error("Cannot create prep worlds", e);

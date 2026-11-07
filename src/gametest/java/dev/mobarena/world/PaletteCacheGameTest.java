@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * Structure templates are shared by all levels. RED and BLUE levels use the same seed, so worldgen threads
+ * Test of the StructurePaletteMixin (main). Structure templates are shared by all levels. RED and BLUE levels use the same seed, so worldgen threads
  * of both levels read the same template palette at the same time (T10e bug 1: CME in Palette.blocks).
  */
 public class PaletteCacheGameTest {
