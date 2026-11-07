@@ -2,6 +2,13 @@
   "required": true,
   "package": "dev.mobarena.backpack.mixin",
   "compatibilityLevel": "JAVA_25",
-  "mixins": ["ServerPlayerMixin", "ContainerMenuMixin"],
-  "injectors": {"defaultRequire": 1}
+  "mixins": [
+    "ServerPlayerMixin",
+    "ContainerMenuMixin",
+    "InventoryMixin",
+    "EntityEquipmentMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

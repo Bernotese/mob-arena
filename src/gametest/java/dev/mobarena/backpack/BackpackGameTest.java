@@ -1,5 +1,7 @@
 package dev.mobarena.backpack;
 
+import dev.mobarena.gametest.TestPlayers;
+
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -16,8 +18,8 @@ import net.minecraft.world.item.Items;
 public class BackpackGameTest {
     @GameTest
     public void sharedStorageAndLiveView(GameTestHelper helper) {
-        ServerPlayer first = helper.makeMockServerPlayerInLevel();
-        ServerPlayer second = helper.makeMockServerPlayerInLevel();
+        ServerPlayer first = TestPlayers.create(helper);
+        ServerPlayer second = TestPlayers.create(helper);
         TeamBackpack storage = new TeamBackpack();
         SimpleContainer red = storage.inventory("red");
         ChestMenu a = ChestMenu.threeRows(1, first.getInventory(), red);
@@ -57,7 +59,7 @@ public class BackpackGameTest {
 
     @GameTest
     public void dropAndContainerGuards(GameTestHelper helper) {
-        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        ServerPlayer player = TestPlayers.create(helper);
         ItemStack backpack = BackpackItem.create();
         helper.assertTrue(!backpack.has(DataComponents.BUNDLE_CONTENTS), "Vanilla bundle storage is absent");
         player.getInventory().setItem(player.getInventory().getSelectedSlot(), backpack);
@@ -81,13 +83,14 @@ public class BackpackGameTest {
 
     @GameTest
     public void deathAndMissingItemRecovery(GameTestHelper helper) {
-        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        ServerPlayer player = TestPlayers.create(helper);
         BackpackModule.setAccess(p -> p == player ? "death-test" : null);
         try {
             GuardedItems.restore(player);
             TeamBackpack storage = new TeamBackpack();
             storage.inventory("death-test").setItem(0, new ItemStack(Items.EMERALD, 3));
             player.die(player.damageSources().genericKill());
+            helper.assertTrue(hasBackpack(player), "Backpack stays in its slot before recovery");
             GuardedItems.restore(player);
             helper.assertTrue(hasBackpack(player), "Backpack remains available after death");
             helper.assertTrue(storage.inventory("death-test").getItem(0).getCount() == 3, "Death preserves team storage");
