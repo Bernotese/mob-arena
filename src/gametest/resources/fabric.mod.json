@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"id": "mobarena-gametest",
+	"version": "1.0.0",
+	"name": "Mob Arena GameTests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"dev.mobarena.gametest.MobArenaGameTest"
+		]
+	},
+	"depends": {
+		"mobarena": "*"
+	}
+}

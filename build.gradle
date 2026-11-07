@@ -1,0 +1,97 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+	maven {
+		name = 'Nucleoid'
+		url = 'https://maven.nucleoid.xyz/'
+	}
+	mavenCentral()
+}
+
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = 'mobarena-gametest'
+		enableGameTests = true
+		enableClientGameTests = false
+		eula = true
+	}
+}
+
+loom {
+	mods {
+		'mobarena' {
+			sourceSet sourceSets.main
+		}
+	}
+	runs {
+		server {
+			// Run dir 'run/' is in .gitignore.
+			runDir = 'run'
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	implementation include("xyz.nucleoid:fantasy:${project.fantasy_version}")
+	implementation include("eu.pb4:sgui:${project.sgui_version}")
+
+	testImplementation platform("org.junit:junit-bom:${project.junit_version}")
+	testImplementation 'org.junit.jupiter:junit-jupiter'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+processResources {
+	def version = project.version
+	inputs.property 'version', version
+	filesMatching('fabric.mod.json') {
+		expand 'version': version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+	it.options.encoding = 'UTF-8'
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+test {
+	useJUnitPlatform()
+}
+
+// Write eula.txt and server.properties for local runServer.
+tasks.register('prepareRunDir') {
+	def runDir = file('run')
+	outputs.upToDateWhen { false }
+	doLast {
+		runDir.mkdirs()
+		new File(runDir, 'eula.txt').text = 'eula=true\n'
+		def props = new File(runDir, 'server.properties')
+		if (!props.exists()) {
+			props.text = 'online-mode=false\n'
+		} else if (!props.text.contains('online-mode=false')) {
+			props.text = props.text.replaceAll(/(?m)^online-mode=.*$/, '') + '\nonline-mode=false\n'
+		}
+	}
+}
+tasks.matching { it.name == 'runServer' }.configureEach {
+	dependsOn 'prepareRunDir'
+}
