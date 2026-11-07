@@ -99,6 +99,8 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - Children of wave mobs (slime splits, and similar) get the same tag. They must also die.
 - Mobs that leave the arena bounds teleport back to a spawn point.
 - After 60 s in a wave (`mobGlowAfterSeconds`), all remaining wave mobs get the glowing effect.
+- Max 150 wave mobs are alive at the same time (`maxAliveMobs`). The other mobs wait in a queue and spawn when mobs die. **[DEFAULT]**
+- Players cannot use spawn eggs in the arena.
 - Fish do not count (section 3.1), so they never spawn. Other water mobs (squid, dolphin, guardian, axolotl, and others) spawn in a water basin of the arena. If the arena has no basin, they spawn in a 1-block water source at the spawn point. **[DEFAULT]**
 
 ### 7.4 Wave time limit
@@ -110,6 +112,10 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - If **all** team players are dead (or in the respawn timer) at the same time, the team is **eliminated** at once.
 - A team with 1 player is eliminated when this player dies.
 - Disconnected players count as dead for this rule. **[DEFAULT]**
+
+### 7.6 Finished and eliminated teams
+- A finished team stays in its arena in survival mode until the end.
+- Players of an eliminated team become spectators and teleport to the arena of the other team to watch. **[DEFAULT]**
 
 ## 8. Win rules
 Progress of a team = (highest cleared wave, then number of killed mobs in the current wave, then time).
@@ -163,6 +169,7 @@ Root: `/mobarena`, alias `/ma`.
 | `suddenDeathMaxTimeSeconds` | int | 600 |
 | `arenaRespawnSeconds` | int | 10 |
 | `mobGlowAfterSeconds` | int | 60 |
+| `maxAliveMobs` | int | 150 |
 | `endScreenSeconds` | int | 15 |
 | `randomizerEnabled` | bool | true |
 | `mobBlacklist` | list of entity ids | `ender_dragon, player, armor_stand, cod, salmon, tropical_fish, pufferfish` |
