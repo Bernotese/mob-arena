@@ -1,0 +1,51 @@
+[
+  {
+    "case": "1-no-game-1",
+    "result": "PASS",
+    "startup_clean": true,
+    "rejected_execution": false,
+    "error": ""
+  },
+  {
+    "case": "1-no-game-2",
+    "result": "PASS",
+    "startup_clean": true,
+    "rejected_execution": false,
+    "error": ""
+  },
+  {
+    "case": "2-game-wait-10s-1",
+    "result": "PASS",
+    "startup_clean": true,
+    "rejected_execution": false,
+    "error": ""
+  },
+  {
+    "case": "2-game-wait-10s-2",
+    "result": "PASS",
+    "startup_clean": true,
+    "rejected_execution": false,
+    "error": ""
+  },
+  {
+    "case": "3-portal-rejoin-immediate-1",
+    "result": "FAIL",
+    "startup_clean": true,
+    "rejected_execution": true,
+    "error": "Server log contains an exception or error: /home/jannes/workspcae/mc-mods/mob-arena-wt/codex-2/run/compare-3-portal-rejoin-immediate-1.log"
+  },
+  {
+    "case": "3-portal-rejoin-immediate-2",
+    "result": "FAIL",
+    "startup_clean": true,
+    "rejected_execution": true,
+    "error": "Server log contains an exception or error: /home/jannes/workspcae/mc-mods/mob-arena-wt/codex-2/run/compare-3-portal-rejoin-immediate-2.log"
+  },
+  {
+    "case": "final-cleanup-check",
+    "result": "PASS",
+    "startup_clean": true,
+    "rejected_execution": false,
+    "error": ""
+  }
+]

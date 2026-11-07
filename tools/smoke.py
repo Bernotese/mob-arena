@@ -110,7 +110,61 @@ def setup():
     (RUN / 'eula.txt').write_text('eula=true\n')
 
 
-def main():
+def check_startup_cleanup():
+    parent = RUN / 'world/dimensions/mobarena'
+    leftovers = list(parent.iterdir()) if parent.exists() else []
+    if leftovers:
+        raise AssertionError(f'Mob Arena level folders remain after startup: {leftovers}')
+    print('PASS: No Mob Arena level folders after startup.', flush=True)
+
+
+def run_scenario(rcon, log, process, *, spike=False):
+    cmd = rcon.command
+    for key, value in TIMES.items():
+        cmd(f'ma config set {key} {value}', 'Config saved')
+    cmd('player red1 spawn')
+    wait_log(log, r'red1 joined the game', process, timeout=90)
+    cmd('player blue1 spawn')
+    wait_log(log, r'blue1 joined the game', process, timeout=90)
+    cmd('ma team assign red1 red', 'Player assigned to RED')
+    cmd('ma team assign blue1 blue', 'Player assigned to BLUE')
+    cmd('ma start', 'Game started')
+    offset = len(log.read_text())
+    cmd('ma status', 'Phase: PREP')
+    process.stdin.write(b'ma status\n')
+    process.stdin.flush()
+    wait_log(log, r'Phase: PREP', process, offset=offset)
+    if spike:
+        cmd('carpet list respawn')
+        cmd('carpet list death')
+        cmd('gamemode creative red1')
+        cmd('data get entity red1 playerGameType', 'entity data: 1')
+        cmd('data get entity red1 Dimension', 'mobarena:red_overworld_')
+        cmd('execute at red1 run fill ~-1 199 ~ ~2 203 ~ obsidian')
+        cmd('execute at red1 run fill ~ 200 ~ ~1 202 ~ nether_portal[axis=x]')
+        cmd('execute at red1 run tp red1 ~ 200 ~')
+        deadline = time.monotonic() + 45
+        while True:
+            dimension = cmd('data get entity red1 Dimension')
+            if 'mobarena:red_nether_' in dimension:
+                break
+            if time.monotonic() > deadline:
+                raise AssertionError('Fake player did not enter the RED Nether')
+            time.sleep(0.5)
+        cmd('gamemode survival red1')
+        time.sleep(4)
+        death_offset = len(log.read_text())
+        cmd('damage red1 100 minecraft:generic_kill', 'Applied')
+        wait_log(log, r'red1 left the game', process, offset=death_offset)
+        cmd('player red1 spawn')
+        wait_log(log, r'red1 joined the game', process, timeout=90, offset=death_offset)
+        cmd('data get entity red1 Health', '20.0f')
+        print('PASS: Carpet death, command rejoin, RED Nether portal.')
+    cmd('ma stop', 'Game stopped')
+    cmd('ma status', 'Phase: LOBBY')
+
+
+def run(*, game=True, spike=False, cleanup_delay=0, log_name='smoke-console.log'):
     # Refuse an existing server before changing its local files.
     for port in (25565, 25575):
         with socket.socket() as probe:
@@ -120,7 +174,7 @@ def main():
     env = os.environ.copy()
     java = Path.home() / '.local/jdks/jdk-25.0.5+8'
     env.update(JAVA_HOME=str(java), PATH=f'{java}/bin:{env["PATH"]}')
-    log = RUN / 'smoke-console.log'
+    log = RUN / log_name
     rcon = None
     print(f'Waiting for the shared Gradle lock. Server log: {log}', flush=True)
     with log.open('w') as output:
@@ -131,48 +185,11 @@ def main():
         try:
             wait_log(log, r'RCON running on', process, timeout=None)
             rcon = Rcon()
-            cmd = rcon.command
-            for key, value in TIMES.items():
-                cmd(f'ma config set {key} {value}', 'Config saved')
-            cmd('player red1 spawn')
-            wait_log(log, r'red1 joined the game', process, timeout=90)
-            cmd('player blue1 spawn')
-            wait_log(log, r'blue1 joined the game', process, timeout=90)
-            cmd('ma team assign red1 red', 'Player assigned to RED')
-            cmd('ma team assign blue1 blue', 'Player assigned to BLUE')
-            cmd('ma start', 'Game started')
-            offset = len(log.read_text())
-            cmd('ma status', 'Phase: PREP')
-            process.stdin.write(b'ma status\n')
-            process.stdin.flush()
-            wait_log(log, r'Phase: PREP', process, offset=offset)
-            if '--spike' in sys.argv:
-                cmd('carpet list respawn')
-                cmd('carpet list death')
-                cmd('gamemode survival red1')
-                time.sleep(4)
-                death_offset = len(log.read_text())
-                cmd('damage red1 100 minecraft:generic_kill', 'Applied')
-                wait_log(log, r'red1 left the game', process, offset=death_offset)
-                cmd('player red1 spawn')
-                wait_log(log, r'red1 joined the game', process, timeout=90, offset=death_offset)
-                cmd('data get entity red1 Health', '20.0f')
-                cmd('gamemode creative red1')
-                cmd('data get entity red1 playerGameType', 'entity data: 1')
-                cmd('execute at red1 run tp red1 ~ 200 ~')
-                cmd('execute at red1 run fill ~-1 ~-1 ~ ~2 ~3 ~ obsidian')
-                cmd('execute at red1 run fill ~ ~ ~ ~1 ~2 ~ nether_portal[axis=x]')
-                deadline = time.monotonic() + 45
-                while True:
-                    dimension = cmd('data get entity red1 Dimension')
-                    if 'mobarena:red_nether_' in dimension:
-                        break
-                    if time.monotonic() > deadline:
-                        raise AssertionError('Fake player did not enter the RED Nether')
-                    time.sleep(0.5)
-                print('PASS: Carpet death, command rejoin, RED Nether portal.')
-            cmd('ma stop', 'Game stopped')
-            cmd('ma status', 'Phase: LOBBY')
+            check_startup_cleanup()
+            if game:
+                run_scenario(rcon, log, process, spike=spike)
+                if cleanup_delay:
+                    time.sleep(cleanup_delay)
         finally:
             if process.poll() is None:
                 if process.stdin:
@@ -191,8 +208,8 @@ def main():
             raise AssertionError(f'Server log contains an exception or error: {server_log}')
     if process.returncode:
         raise RuntimeError(f'Server exit status: {process.returncode}')
-    print('PASS: Carpet spawn, PREP, stop, clean server log.')
+    print('PASS: Server scenario and clean server log.')
 
 
 if __name__ == '__main__':
-    main()
+    run(spike='--spike' in sys.argv)

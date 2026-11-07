@@ -25,3 +25,20 @@ Carpet is not a Gradle dependency and is never included by the release packaging
 
 S7 respawn timers and elimination stay in GameTests.
 The Carpet death and spawn check covers the S8 rejoin path.
+Carpet applies its spawn position after the JOIN callback.
+The default spawn command overrides the mod's rejoin position.
+This check confirms rejoin events and health, but does not confirm normal client position restoration.
+The spike checks the portal before death.
+
+Both commands stop the server immediately after `/ma stop` and the LOBBY check.
+They do not wait for world cleanup or ignore shutdown exceptions.
+A spike run found a known shutdown race in vanilla chunk I/O.
+See [the saved trace](evidence/T10b-shutdown.txt) and T10 Spike results.
+The script returns failure if this race occurs.
+
+Run `python3 tools/shutdown_compare.py` for the shutdown comparison.
+It runs each case twice: no game, game stop with a ten-second wait, and portal/rejoin with immediate shutdown.
+It checks level folder cleanup after every next startup.
+It runs the default smoke once more to check cleanup after the last comparison.
+It saves the result table and failure traces in `tools/evidence/`.
+Full server and driver logs remain in ignored `run/`.
