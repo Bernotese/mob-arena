@@ -9,7 +9,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import java.util.*;
 
 public class DebugGameTest {
-    @GameTest(environment = "mobarena-gametest:debug_driver")
+    @GameTest(environment = "mobarena:debug_driver")
     public void poolWavesAndState(GameTestHelper h) throws Exception {
         var game = GameManager.get(); game.stop();
         var red = TestPlayers.create(h); var blue = TestPlayers.create(h);
@@ -24,6 +24,11 @@ public class DebugGameTest {
             var source = h.getLevel().getServer().createCommandSourceStack();
             h.assertTrue(dispatcher.execute("ma debug waves red zombie:3,cow:1 - -", source) == 1, "Command accepts wave specs");
             h.assertTrue(!dispatcher.parse("ma debug state", red.createCommandSourceStack()).getReader().getRemaining().isEmpty(), "Players without level four cannot use debug");
+            var levelTwo = source.withPermission(net.minecraft.server.permissions.LevelBasedPermissionSet.GAMEMASTER);
+            h.assertTrue(net.minecraft.commands.Commands.hasPermission(net.minecraft.commands.Commands.LEVEL_GAMEMASTERS).test(levelTwo),
+                    "Permission check uses a level-two command source");
+            try { dispatcher.execute("ma debug state", levelTwo); throw new AssertionError("Level two must not run debug"); }
+            catch (com.mojang.brigadier.exceptions.CommandSyntaxException expected) { }
             DebugDriver.timer(12);
             h.assertTrue(game.context().timer().remainingTicks() == 240, "Timer uses server ticks");
             String property = System.getProperty("mobarena.debug");
@@ -32,7 +37,10 @@ public class DebugGameTest {
                 try { DebugDriver.timer(1); throw new AssertionError("Expected disabled driver"); }
                 catch (IllegalStateException expected) { }
                 h.assertTrue(!dispatcher.parse("ma debug state", source).getReader().getRemaining().isEmpty(), "Disabled commands are unavailable");
-            } finally { System.setProperty("mobarena.debug", property); }
+            } finally {
+                if (property == null) System.clearProperty("mobarena.debug");
+                else System.setProperty("mobarena.debug", property);
+            }
 
             h.assertTrue(dispatcher.parse("ma debug kill " + red.getName().getString() + " minecraft:zombie 2", source).getReader().getRemaining().isEmpty(), "Kill accepts entity identifier");
             var state = DebugDriver.state(h.getLevel().getServer());

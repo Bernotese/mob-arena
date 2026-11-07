@@ -29,9 +29,9 @@ public final class DebugModule {
             .requires(s -> DebugDriver.enabled() && hasPermission(LEVEL_OWNERS).test(s))
             .then(literal("kill").then(argument("player", EntityArgument.player()).then(argument("entity", IdentifierArgument.id())
                 .executes(c -> run(c, x -> DebugDriver.kill(EntityArgument.getPlayer(x, "player"), IdentifierArgument.getId(x, "entity").toString(), 1)))
-                .then(argument("n", IntegerArgumentType.integer(1)).executes(c -> run(c, x -> DebugDriver.kill(EntityArgument.getPlayer(x, "player"), IdentifierArgument.getId(x, "entity").toString(), IntegerArgumentType.getInteger(x, "n"))))))))
+                .then(argument("n", IntegerArgumentType.integer(1, DebugDriver.MAX_COUNT)).executes(c -> run(c, x -> DebugDriver.kill(EntityArgument.getPlayer(x, "player"), IdentifierArgument.getId(x, "entity").toString(), IntegerArgumentType.getInteger(x, "n"))))))))
             .then(literal("pool").then(literal("add").then(argument("team", StringArgumentType.word()).then(argument("entity", IdentifierArgument.id())
-                .then(argument("n", IntegerArgumentType.integer(1)).executes(c -> run(c, x -> DebugDriver.poolAdd(team(x), IdentifierArgument.getId(x, "entity").toString(), IntegerArgumentType.getInteger(x, "n")))))))))
+                .then(argument("n", IntegerArgumentType.integer(1, DebugDriver.MAX_COUNT)).executes(c -> run(c, x -> DebugDriver.poolAdd(team(x), IdentifierArgument.getId(x, "entity").toString(), IntegerArgumentType.getInteger(x, "n")))))))))
             .then(literal("waves").then(argument("team", StringArgumentType.word()).then(argument("w1 w2 w3", StringArgumentType.greedyString())
                 .executes(c -> run(c, x -> {
                     String[] waves = str(x, "w1 w2 w3").trim().split("\\s+");

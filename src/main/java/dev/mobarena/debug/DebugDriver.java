@@ -16,6 +16,7 @@ import java.util.*;
 
 /** Development controls. Call on the server thread with the debug property enabled. */
 public final class DebugDriver {
+    public static final int MAX_COUNT = 10_000;
     private DebugDriver() {}
     public static boolean enabled() { return Boolean.getBoolean("mobarena.debug"); }
     private static void check() {
@@ -34,7 +35,7 @@ public final class DebugDriver {
         return type;
     }
     private static void positive(int count) {
-        if (count <= 0) throw new IllegalArgumentException("Count must be positive");
+        if (count <= 0 || count > MAX_COUNT) throw new IllegalArgumentException("Count must be between 1 and " + MAX_COUNT);
     }
     public static void poolAdd(TeamId team, String entity, int count) {
         var ctx = context(); positive(count); type(entity, ctx.server().overworld());
@@ -84,6 +85,9 @@ public final class DebugDriver {
     }
     public static void timer(int seconds) {
         var ctx = context();
+        var phase = GameManager.get().phase();
+        if (phase == Phase.ARENA || phase == Phase.SUDDEN_DEATH)
+            throw new IllegalStateException("The phase timer cannot control arena battles");
         if (seconds < 0) throw new IllegalArgumentException("Seconds must be nonnegative");
         ctx.timer().reset(seconds * 20L);
     }
