@@ -17,7 +17,9 @@ public final class PrepWorldManager implements PhaseListener {
                 var overworld = LevelFactory.open(ctx.server(), ctx.seed(), team, WorldKind.PREP_OVERWORLD);
                 var nether = LevelFactory.open(ctx.server(), ctx.seed(), team, WorldKind.PREP_NETHER);
                 var end = LevelFactory.open(ctx.server(), ctx.seed(), team, WorldKind.PREP_END);
+                long started = System.nanoTime();
                 var spawn = TeamSpawnFinder.find(overworld.asLevel());
+                MobArena.LOGGER.info("Found {} prep spawn in {} ms", team, (System.nanoTime() - started) / 1_000_000);
                 overworld.asLevel().getChunk(spawn.getX() >> 4, spawn.getZ() >> 4);
                 teams.put(team, new TeamWorlds(overworld, nether, end, null, spawn, null));
                 ctx.setPrepLevel(team, overworld.asLevel());
@@ -38,15 +40,6 @@ public final class PrepWorldManager implements PhaseListener {
                 var team = ctx.team(player.getUUID());
                 if (team == null) continue;
                 var world = worlds.get(team);
-                player.closeContainer();
-                player.getInventory().clearContent();
-                player.setGameMode(GameType.SURVIVAL);
-                player.getAbilities().invulnerable = false;
-                player.onUpdateAbilities();
-                player.setHealth(player.getMaxHealth());
-                player.getFoodData().setFoodLevel(20);
-                player.getFoodData().setSaturation(5);
-                player.clearFire();
                 player.teleport(new TeleportTransition(world.overworld().asLevel(), Vec3.atBottomCenterOf(world.prepSpawn()),
                         Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
             }

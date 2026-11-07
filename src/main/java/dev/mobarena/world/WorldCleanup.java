@@ -21,13 +21,6 @@ public final class WorldCleanup implements PhaseListener {
 
     public static void clean(MinecraftServer server) {
         var handles = HANDLES.stream().filter(h -> h.asLevel().getServer() == server).toList();
-        var levels = handles.stream().map(RuntimeLevelHandle::asLevel).toList();
-        var lobby = server.overworld();
-        var pos = server.getRespawnData().pos();
-        for (var player : List.copyOf(server.getPlayerList().getPlayers())) if (levels.contains(player.level())) {
-            player.teleportTo(lobby, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, Set.of(), 0, 0, true);
-            player.setGameMode(GameType.ADVENTURE);
-        }
         for (var handle : handles) {
             var level = handle.asLevel();
             for (var chunk : FORCED.getOrDefault(level, Set.of())) {
