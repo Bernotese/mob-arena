@@ -10,6 +10,7 @@ public final class MobArena implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		dev.mobarena.randomizer.RandomizerModule.init();
 		LOGGER.info("Mob Arena loaded");
 	}
 }
