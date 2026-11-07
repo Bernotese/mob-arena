@@ -15,6 +15,9 @@ Rules for all agents in this project: the main session and the background agents
 ## Tools
 - You can download and install missing tools and libraries. Do not ask first.
 - Write the name and version of each new tool or library in your report.
+- Java 25 is in `~/.local/jdks/jdk-25.0.5+8`. Before `./gradlew`, run:
+  `export JAVA_HOME=$HOME/.local/jdks/jdk-25.0.5+8 PATH=$HOME/.local/jdks/jdk-25.0.5+8/bin:$PATH`
+- `./gradlew build` also runs the GameTests. Report to `orchestrator` with `herdr agent prompt orchestrator "<report>"`.
 
 ## Tests
 - Test all changes locally before you report "done".

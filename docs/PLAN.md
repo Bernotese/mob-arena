@@ -77,6 +77,7 @@ Status is tracked by `orchestrator`. Each task: owner type, dependencies, done c
 - `MobArenaConfig` with all keys from SPEC section 11, JSON load/save, `/ma config get|set|reset`.
 - `TeamManager`: assign, remove, random shuffle (pure logic, unit test), vanilla scoreboard teams with colors, friendly fire off.
 - Lobby: `/ma setlobby`, lobby spawn, adventure mode, no damage in `LOBBY`.
+- Holding area for `WAVE_CONFIG` in the lobby world: teleport all team players there at phase start (invulnerable).
 - Done: unit tests for state machine (fake tick source), config round trip, shuffle. GameTest: `/ma start` with 2 fake players goes to `PREP`.
 
 **T3 – Item randomizer** (Codex). Depends on T1. Can run with T2.
