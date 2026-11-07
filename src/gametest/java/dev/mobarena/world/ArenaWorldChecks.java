@@ -68,27 +68,77 @@ final class ArenaWorldChecks {
         h.assertValueEqual(clock, 6000L, "W8 arena starts at noon");
         h.setTime(6000);
         Zombie zombie = EntityTypes.ZOMBIE.create(arena, EntitySpawnReason.COMMAND);
-        zombie.setPos(0.5, 64, 0.5);
+        zombie.setPos(0.5, 100, 0.5); // Above the arena roof, under open sky.
         zombie.setPersistenceRequired();
+        zombie.setNoAi(true);
+        zombie.setNoGravity(true);
         arena.addFreshEntity(zombie);
         var controlLevel = h.getLevel();
         var controlPos = h.absolutePos(new BlockPos(2, 2, 2));
-        controlLevel.setBlockAndUpdate(controlPos.below(), Blocks.STONE.defaultBlockState());
-        Zombie control = EntityTypes.ZOMBIE.create(controlLevel, EntitySpawnReason.COMMAND);
-        control.setPos(Vec3.atBottomCenterOf(controlPos));
-        control.setPersistenceRequired();
-        controlLevel.addFreshEntity(control);
-        h.runBeforeTestEnd(() -> { rain.setRaining(raining); zombie.discard(); control.discard(); });
-        // No rain for the control, so sunlight remains observable.
+        h.runBeforeTestEnd(() -> { rain.setRaining(raining); zombie.discard(); });
         rain.setRaining(false);
         controlLevel.setRainLevel(0);
         h.runAfterDelay(100, () -> {
             h.assertValueEqual(arena.getOverworldClockTime(), clock, "W8 arena clock remains fixed");
+            h.assertTrue(zombie.tickCount > 80, "W9 arena zombie ticks");
+            var attribute = net.minecraft.world.attribute.EnvironmentAttributes.MONSTERS_BURN;
+            h.assertTrue(arena.environmentAttributes().getValue(attribute, zombie.position()),
+                    "W9 arena retains the overworld daylight attribute");
+            h.assertTrue(controlLevel.environmentAttributes().getValue(attribute, Vec3.atBottomCenterOf(controlPos)),
+                    "W9 lobby has the daylight attribute");
+            h.assertTrue(zombie.getLightLevelDependentMagicValue() > 0.5F, "W9 arena zombie has full daylight");
+            h.assertTrue(arena.canSeeSky(BlockPos.containing(zombie.getX(), zombie.getEyeY(), zombie.getZ())),
+                    "W9 arena zombie sees the sky");
+            h.assertFalse(zombie.isInWaterOrRain(), "W9 arena zombie is dry");
+            var prepWorld = ctx.get(TeamWorlds.KEY).get(TeamId.RED);
+            verifySunBurnMixin(h, zombie, controlLevel, controlPos, prepWorld.overworld().asLevel(), prepWorld.prepSpawn());
             h.assertFalse(zombie.isOnFire(), "W9 arena zombie does not burn");
-            h.assertTrue(control.isOnFire(), "W9 lobby control burns in sunlight");
-            zombie.discard(); control.discard(); rain.setRaining(raining);
+            zombie.discard(); rain.setRaining(raining);
             next.run();
         });
+    }
+    private static void verifySunBurnMixin(GameTestHelper h, Zombie zombie, ServerLevel lobby, BlockPos position,
+                                           ServerLevel prep, BlockPos prepPosition) {
+        try {
+            var sunBurn = Mob.class.getDeclaredMethod("isSunBurnTick");
+            sunBurn.setAccessible(true);
+            for (int attempt = 0; attempt < 1000; attempt++) {
+                h.assertFalse((boolean) sunBurn.invoke(zombie), "W9 arena blocks every sunlight check");
+            }
+            // Test the injected callback directly, without vanilla's random sunlight chance.
+            var callback = Arrays.stream(Mob.class.getDeclaredMethods())
+                    .filter(method -> method.getName().contains("mobarena$noSunBurn")).findFirst().orElseThrow();
+            callback.setAccessible(true);
+            var arenaResult = new org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean>(
+                    "isSunBurnTick", true, true);
+            callback.invoke(zombie, arenaResult);
+            h.assertTrue(arenaResult.isCancelled(), "W9 arena callback cancels vanilla");
+            h.assertFalse(arenaResult.getReturnValue(), "W9 arena callback returns false");
+            var control = (Zombie) zombie.teleport(new net.minecraft.world.level.portal.TeleportTransition(lobby,
+                    Vec3.atBottomCenterOf(position), Vec3.ZERO, 0, 0,
+                    net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING));
+            var lobbyResult = new org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean>(
+                    "isSunBurnTick", true, true);
+            h.assertTrue(control != null && control.level() == lobby, "W9 same zombie moves to lobby");
+            try {
+                h.assertValueEqual(control.getUUID(), zombie.getUUID(), "W9 control preserves zombie identity");
+                h.assertTrue(control.getLightLevelDependentMagicValue() > 0.5F, "W9 lobby control has full daylight");
+                callback.invoke(control, lobbyResult);
+                h.assertFalse(lobbyResult.isCancelled(), "W9 lobby callback permits vanilla");
+                h.assertTrue(lobbyResult.getReturnValue(), "W9 lobby callback preserves a true vanilla result");
+                var prepControl = (Zombie) control.teleport(new net.minecraft.world.level.portal.TeleportTransition(prep,
+                        Vec3.atBottomCenterOf(prepPosition), Vec3.ZERO, 0, 0,
+                        net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING));
+                h.assertTrue(prepControl != null && prepControl.level() == prep, "W9 control moves to team prep overworld");
+                try {
+                    var prepResult = new org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean>(
+                            "isSunBurnTick", true, true);
+                    callback.invoke(prepControl, prepResult);
+                    h.assertFalse(prepResult.isCancelled(), "W9 prep callback permits vanilla");
+                    h.assertTrue(prepResult.getReturnValue(), "W9 prep callback preserves a true vanilla result");
+                } finally { prepControl.discard(); }
+            } finally { control.discard(); }
+        } catch (ReflectiveOperationException e) { throw new IllegalStateException(e); }
     }
     private static void template(GameTestHelper h, ServerLevel level) {
         Path file = null;
