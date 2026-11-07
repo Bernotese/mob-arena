@@ -72,8 +72,9 @@ final class ArenaRules {
 
     private static boolean allowLoad(Entity entity, ServerLevel level, EntitySpawnReason reason, boolean fromDisk) {
         if (fromDisk || !(entity instanceof Mob mob) || !isArena(level)) return true;
-        // Player-built golems and withers do not work in arenas (T7b review decision).
-        if (reason == EntitySpawnReason.TRIGGERED && PLAYER_BUILT.contains(entity.getType())) return false;
+        // Player-built golems and withers are allowed (user decision), but they are never wave mobs:
+        // no wave tag, so no glow, no wave count, no engage, no infight block. They act as vanilla.
+        if (reason == EntitySpawnReason.TRIGGERED && PLAYER_BUILT.contains(entity.getType())) return true;
         // No random jockeys for wave spawns (T7 decision); WaveSpawner removes the rest.
         if (reason == EntitySpawnReason.JOCKEY && WaveSpawner.finalizing()) return false;
         if (reason != null) switch (reason) {
