@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Local Carpet/RCON smoke test. Uses only Python's standard library."""
+import argparse
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -52,7 +54,7 @@ class Rcon:
         packet = self.exact(size)
         return struct.unpack('<ii', packet[:8])[0], packet[8:-2].decode()
 
-    def command(self, command, expected=None):
+    def command(self, command, expected=None, quiet=False):
         self.send(2, command)
         request, reply = self.receive()
         if request != self.request:
@@ -70,7 +72,8 @@ class Rcon:
                 pass
             finally:
                 self.sock.settimeout(120)
-        print(f'> {command}\n{reply}', flush=True)
+        if not quiet:
+            print(f'> {command}\n{reply}', flush=True)
         if expected is not None and expected not in reply:
             raise AssertionError(f'Expected {expected!r}: {reply}')
         return reply
@@ -168,7 +171,197 @@ def run_scenario(rcon, log, process, *, spike=False, portal_only=False):
     cmd('ma status', 'Phase: LOBBY')
 
 
-def run(*, game=True, spike=False, portal_only=False, cleanup_delay=0, log_name='smoke-console.log'):
+# ---- T10e scenarios with /ma debug (needs -Dmobarena.debug=true, set in the runServer config) ----
+
+def state(rcon):
+    """Current game state from /ma debug state (JSON after the MOBARENA_STATE marker)."""
+    reply = rcon.command('ma debug state', 'MOBARENA_STATE', quiet=True)
+    return json.JSONDecoder().raw_decode(reply[reply.index('MOBARENA_STATE ') + len('MOBARENA_STATE '):])[0]
+
+
+def wait_state(rcon, check, what, timeout=120, seen=None):
+    """Poll the state until check(state) is true. Records each new phase in seen."""
+    deadline = time.monotonic() + timeout
+    while True:
+        current = state(rcon)
+        if seen is not None and (not seen or seen[-1] != current['phase']):
+            seen.append(current['phase'])
+            print(f'PHASE: {current["phase"]}', flush=True)
+        if check(current):
+            print(f'PASS: {what}', flush=True)
+            return current
+        if time.monotonic() > deadline:
+            raise AssertionError(f'Timeout: {what}; state: {json.dumps(current)}')
+        time.sleep(0.5)
+
+
+def battle(current, team):
+    return current['battles'][team] or {}
+
+
+def wave_of(current, team):
+    tag = battle(current, team).get('tag') or ''
+    return int(tag.rsplit('.', 1)[1]) if tag else 0
+
+
+def tagged_count(rcon, tag):
+    """Live entities with a scoreboard tag in all levels (independent of the mod's own count)."""
+    reply = rcon.command(f'execute if entity @e[tag={tag}]', quiet=True)
+    match = re.search(r'count: (\d+)', reply)
+    return int(match.group(1)) if match else 0
+
+
+def mob_arena_folders():
+    parent = RUN / 'world/dimensions/mobarena'
+    return list(parent.iterdir()) if parent.exists() else []
+
+
+def start_game(rcon, log, process, *, max_alive=None):
+    cmd = rcon.command
+    for key, value in TIMES.items():
+        cmd(f'ma config set {key} {max_alive if key == "maxAliveMobs" and max_alive else value}', 'Config saved')
+    for name in ('red1', 'blue1'):
+        offset = len(log.read_text())
+        cmd(f'player {name} spawn')
+        wait_log(log, rf'{name} joined the game', process, timeout=90, offset=offset)
+    cmd('ma team assign red1 red', 'Player assigned to RED')
+    cmd('ma team assign blue1 blue', 'Player assigned to BLUE')
+    offset = len(log.read_text())
+    cmd('ma start', 'Preparing the game worlds')
+    # The worlds load over several ticks; PREP starts when they are ready.
+    wait_log(log, r'Game started', process, timeout=90, offset=offset)
+
+
+def to_arena(rcon, red_waves, blue_waves, seen):
+    """PREP kills by debug kill, waves by debug waves, then ARENA. *_waves: three WaveSpec strings."""
+    cmd = rcon.command
+    wait_state(rcon, lambda s: s['phase'] == 'PREP', 'PREP', seen=seen)
+    for player, waves in (('red1', red_waves), ('blue1', blue_waves)):
+        needed = {}
+        for spec in waves:
+            for entry in ([] if spec == '-' else spec.split(',')):
+                entity, count = entry.rsplit(':', 1)
+                needed[entity] = needed.get(entity, 0) + int(count)
+        for entity, count in needed.items():
+            cmd(f'ma debug kill {player} minecraft:{entity} {count}', 'Debug action complete')
+    current = state(rcon)
+    for team, waves in (('RED', red_waves), ('BLUE', blue_waves)):
+        total = sum(int(e.rsplit(':', 1)[1]) for spec in waves if spec != '-' for e in spec.split(','))
+        if current['pools'][team] < total:
+            raise AssertionError(f'PREP kills did not reach the {team} pool: {current["pools"]}')
+    print('PASS: PREP kills fill both pools.', flush=True)
+    cmd('ma debug timer 0', 'Debug action complete')
+    wait_state(rcon, lambda s: s['phase'] == 'WAVE_CONFIG', 'WAVE_CONFIG', seen=seen)
+    cmd('ma debug waves red ' + ' '.join(red_waves), 'Debug action complete')
+    cmd('ma debug waves blue ' + ' '.join(blue_waves), 'Debug action complete')
+    cmd('ma debug timer 0', 'Debug action complete')
+    current = wait_state(rcon, lambda s: s['phase'] == 'ARENA', 'ARENA', seen=seen)
+    # Resistance V: Carpet players do not fight back, and a down player would end the scenario early.
+    cmd('effect give red1 minecraft:resistance infinite 4 true')
+    cmd('effect give blue1 minecraft:resistance infinite 4 true')
+    return current
+
+
+def scenario_s1(rcon, log, process):
+    """T10 S1: full game. RED clears all 3 waves, BLUE is down in wave 2, RED wins, END -> LOBBY, levels gone."""
+    seen = []
+    start_game(rcon, log, process)
+    # RED fights the BLUE plan and BLUE fights the RED plan.
+    to_arena(rcon, ['zombie:2', 'zombie:1,cow:1', 'zombie:1'], ['zombie:1', 'zombie:2', 'zombie:1'], seen)
+    for wave in (1, 2, 3):
+        wait_state(rcon, lambda s, w=wave: wave_of(s, 'RED') == w and battle(s, 'RED').get('state') == 'FIGHT'
+                   and battle(s, 'RED').get('alive', 0) > 0, f'RED wave {wave} fight', seen=seen)
+        if wave == 1:
+            wait_state(rcon, lambda s: battle(s, 'BLUE').get('state') == 'FIGHT', 'BLUE wave 1 fight', seen=seen)
+            rcon.command('ma debug clearwave blue', 'Debug action complete')
+        if wave == 2:
+            wait_state(rcon, lambda s: wave_of(s, 'BLUE') == 2 and battle(s, 'BLUE').get('state') == 'FIGHT',
+                       'BLUE wave 2 fight', seen=seen)
+            rcon.command('effect clear blue1')
+            rcon.command('ma debug down blue1', 'Debug action complete')
+            wait_state(rcon, lambda s: battle(s, 'BLUE').get('state') == 'ELIMINATED', 'BLUE eliminated in wave 2', seen=seen)
+        rcon.command('ma debug clearwave red', 'Debug action complete')
+    current = wait_state(rcon, lambda s: s['phase'] != 'ARENA', 'Game result', seen=seen)
+    verdict = current['verdict']
+    if not verdict or (verdict['type'], verdict['winner'], verdict['reason']) != ('WIN', 'RED', 'All waves cleared'):
+        raise AssertionError(f'Expected RED to win by all waves cleared: phase {current["phase"]}, verdict {verdict}')
+    print('PASS: RED wins (All waves cleared).', flush=True)
+    # The game end can block the server for some seconds (known issue), so wait long.
+    current = wait_state(rcon, lambda s: s['phase'] == 'LOBBY', 'END -> LOBBY', timeout=180, seen=seen)
+    expected = ['PREP', 'WAVE_CONFIG', 'ARENA', 'END', 'LOBBY']
+    if seen != expected:
+        raise AssertionError(f'Phase order: {seen}, expected {expected}')
+    print(f'PASS: Phases in order: {seen}', flush=True)
+    # Fantasy deletes the levels in a later server tick.
+    started = time.monotonic()
+    wait_state(rcon, lambda s: not [l for l in s['openLevels'] if l.startswith('mobarena:')],
+               'No game level is open', timeout=60)
+    print(f'INFO: Game levels closed {time.monotonic() - started:.1f} s after LOBBY was seen.', flush=True)
+    for name in ('red1', 'blue1'):
+        rcon.command(f'data get entity {name} Inventory', 'has the following entity data: []')
+    print('PASS: Inventories are empty.', flush=True)
+    deadline = time.monotonic() + 30
+    while mob_arena_folders():
+        if time.monotonic() > deadline:
+            raise AssertionError(f'Game level folders remain: {mob_arena_folders()}')
+        time.sleep(1)
+    print('PASS: Game level folders are deleted.', flush=True)
+
+
+def tick_mspt(rcon):
+    reply = rcon.command('tick query', quiet=True)
+    match = re.search(r'Average time per tick: ([\d.]+)', reply)
+    if not match:
+        raise AssertionError(f'Unknown /tick query output: {reply}')
+    return float(match.group(1))
+
+
+def scenario_s15(rcon, log, process, *, count=300, cap=20, seconds=40):
+    """T10 S15: BLUE fights a wave of 300 zombies with maxAliveMobs 20: never more than 20 alive; MSPT < 50."""
+    seen = []
+    start_game(rcon, log, process, max_alive=cap)
+    # The RED plan is the wave that BLUE fights.
+    to_arena(rcon, [f'zombie:{count}', '-', '-'], ['zombie:1', '-', '-'], seen)
+    tag = 'mobarena.wave.blue.1'
+    wait_state(rcon, lambda s: battle(s, 'BLUE').get('state') == 'FIGHT', 'BLUE wave 1 fight', seen=seen)
+    peak, peak_mspt, killed = 0, 0.0, 0
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        current = state(rcon)
+        alive = max(battle(current, 'BLUE').get('alive', 0), tagged_count(rcon, tag))
+        peak = max(peak, alive)
+        if alive > cap:
+            raise AssertionError(f'{alive} wave mobs alive, cap {cap}')
+        peak_mspt = max(peak_mspt, tick_mspt(rcon))
+        # Kill some mobs so the queue spawns more.
+        reply = rcon.command(f'kill @e[tag={tag},limit=10]', quiet=True)
+        match = re.search(r'Killed (\d+) entities', reply)
+        killed += int(match.group(1)) if match else (1 if reply.startswith('Killed ') else 0)
+        time.sleep(0.5)
+    print(f'PASS: Max {peak} wave mobs alive (cap {cap}) over {seconds} s.', flush=True)
+    if peak < cap or killed <= cap:
+        raise AssertionError(f'Queue did not fill and refill: peak {peak}, {killed} mobs removed')
+    print(f'PASS: Queue refilled ({killed} mobs removed, peak {peak}).', flush=True)
+    if peak_mspt >= 50:
+        raise AssertionError(f'MSPT {peak_mspt:.1f} >= 50')
+    print(f'PASS: Max average MSPT {peak_mspt:.1f} < 50.', flush=True)
+    rcon.command('ma stop', 'Game stopped')
+
+
+def scenario_s16(rcon, log, process):
+    """T10 S16: server stop during ARENA with live wave mobs. The caller stops the server and checks the next start."""
+    seen = []
+    start_game(rcon, log, process)
+    to_arena(rcon, ['zombie:3', 'zombie:1', 'zombie:1'], ['zombie:3', 'zombie:1', 'zombie:1'], seen)
+    wait_state(rcon, lambda s: all(battle(s, t).get('state') == 'FIGHT' and battle(s, t).get('alive', 0) > 0
+                                   for t in ('RED', 'BLUE')), 'Both teams fight', seen=seen)
+    print('Stopping the server during ARENA.', flush=True)
+
+
+SCENARIOS = {'s1': scenario_s1, 's15': scenario_s15, 's16': scenario_s16}
+
+
+def run(*, game=True, spike=False, portal_only=False, cleanup_delay=0, log_name='smoke-console.log', scenario=None):
     # Refuse an existing server before changing its local files.
     for port in (25565, 25575):
         with socket.socket() as probe:
@@ -190,7 +383,9 @@ def run(*, game=True, spike=False, portal_only=False, cleanup_delay=0, log_name=
             wait_log(log, r'RCON running on', process, timeout=180)
             rcon = Rcon()
             check_startup_cleanup()
-            if game:
+            if scenario:
+                scenario(rcon, log, process)
+            elif game:
                 run_scenario(rcon, log, process, spike=spike, portal_only=portal_only)
                 if cleanup_delay:
                     time.sleep(cleanup_delay)
@@ -219,5 +414,26 @@ def run(*, game=True, spike=False, portal_only=False, cleanup_delay=0, log_name=
     print('PASS: Server scenario and clean server log.')
 
 
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--spike', action='store_true', help='also check death, rejoin, and a RED Nether portal')
+    parser.add_argument('--scenario', help='comma-separated T10 scenarios: ' + ','.join(SCENARIOS) + ', or all')
+    args = parser.parse_args()
+    if not args.scenario:
+        run(spike=args.spike)
+        return
+    names = list(SCENARIOS) if args.scenario == 'all' else args.scenario.split(',')
+    unknown = [name for name in names if name not in SCENARIOS]
+    if unknown:
+        parser.error(f'Unknown scenario: {unknown}')
+    for name in names:
+        print(f'=== Scenario {name.upper()} ===', flush=True)
+        run(scenario=SCENARIOS[name], log_name=f'smoke-{name}.log')
+        if name == 's16':
+            # The next start must delete the level folders of the stopped game.
+            run(game=False, log_name='smoke-s16-restart.log')
+        print(f'=== Scenario {name.upper()}: PASS ===', flush=True)
+
+
 if __name__ == '__main__':
-    run(spike='--spike' in sys.argv)
+    main()
