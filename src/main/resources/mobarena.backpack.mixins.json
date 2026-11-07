@@ -6,7 +6,8 @@
     "ServerPlayerMixin",
     "ContainerMenuMixin",
     "InventoryMixin",
-    "EntityEquipmentMixin"
+    "EntityEquipmentMixin",
+    "ShelfBlockMixin"
   ],
   "injectors": {
     "defaultRequire": 1

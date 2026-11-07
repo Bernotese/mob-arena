@@ -137,4 +137,53 @@ public class BackpackGuardGameTest {
             helper.succeed();
         } finally { cleanup(player); }
     }
+    @GameTest
+    public void poweredShelfHotbarSwapsPreserveBackpack(GameTestHelper helper) {
+        ServerPlayer player = TestPlayers.create(helper);
+        try {
+            BackpackModule.setAccess(p -> p == player ? TeamId.RED : null);
+            player.setGameMode(GameType.SURVIVAL);
+            var level = helper.getLevel();
+            var shelfBlock = (net.minecraft.world.level.block.ShelfBlock) Blocks.OAK_SHELF;
+            for (int length : new int[]{1, 3}) {
+                player.getInventory().clearContent();
+                player.getInventory().setSelectedSlot(0);
+                player.getInventory().setItem(0, new ItemStack(Items.STONE, 3));
+                player.getInventory().setItem(6, new ItemStack(Items.STONE, 5));
+                int backpackSlot = length == 1 ? 7 : 1;
+                ItemStack backpack = BackpackItem.create();
+                player.getInventory().setItem(backpackSlot, backpack);
+                BlockPos origin = helper.absolutePos(new BlockPos(1, 1, length == 1 ? 1 : 3));
+                java.util.List<net.minecraft.world.level.block.entity.ShelfBlockEntity> shelves = new java.util.ArrayList<>();
+                for (int offset = 0; offset < length; offset++) {
+                    BlockPos pos = origin.offset(offset, 0, 0);
+                    level.setBlockAndUpdate(pos.below(), Blocks.REDSTONE_BLOCK.defaultBlockState());
+                    level.setBlockAndUpdate(pos, Blocks.OAK_SHELF.defaultBlockState()
+                        .setValue(net.minecraft.world.level.block.ShelfBlock.FACING, Direction.NORTH)
+                        .setValue(net.minecraft.world.level.block.ShelfBlock.POWERED, true));
+                    var shelf = (net.minecraft.world.level.block.entity.ShelfBlockEntity) level.getBlockEntity(pos);
+                    for (int slot = 0; slot < shelf.getContainerSize(); slot++) shelf.setItem(slot, new ItemStack(Items.DIAMOND));
+                    shelves.add(shelf);
+                }
+                helper.assertTrue(shelfBlock.getAllBlocksConnectedTo(level, origin).size() == length, "Powered shelf chain has the requested length");
+                player.teleportTo(origin.getX() + 0.5, origin.getY(), origin.getZ() - 1);
+                var hit = new BlockHitResult(new Vec3(origin.getX() + 0.5, origin.getY() + 0.5, origin.getZ() + 0.01), Direction.NORTH, origin, false);
+                player.gameMode.useItemOn(player, level, player.getMainHandItem(), InteractionHand.MAIN_HAND, hit);
+                helper.assertTrue(player.getInventory().getItem(backpackSlot) == backpack, "Real powered shelf use preserves the original backpack slot");
+                boolean ordinarySwapped = false;
+                for (var shelf : shelves) for (int slot = 0; slot < shelf.getContainerSize(); slot++) {
+                    helper.assertTrue(!GuardedItems.isGuarded(shelf.getItem(slot)), "Powered shelf receives no guarded stack");
+                    ordinarySwapped |= shelf.getItem(slot).is(Items.STONE);
+                }
+                helper.assertTrue(ordinarySwapped, "Real shelf use still swaps ordinary hotbar items");
+                GuardedItems.restore(player);
+                int count = 0;
+                for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++)
+                    if (GuardedItems.hasTag(player.getInventory().getItem(slot), BackpackItem.TAG)) count++;
+                helper.assertTrue(count == 1, "Recovery does not duplicate the preserved backpack");
+            }
+            helper.succeed();
+        } finally { cleanup(player); }
+    }
+
 }
