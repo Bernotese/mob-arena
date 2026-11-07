@@ -62,12 +62,14 @@ final class WaveSpawner {
      * ArenaRules), a skeleton on a spider, or a rider on a strider (passengers, not yet in the level).
      * A baby zombie can also mount a chicken nearby. Undo all of it before the mob is added.
      */
-    private static void removeJockeys(ServerLevel level, Mob mob) {
+    static void removeJockeys(ServerLevel level, Mob mob) {
         var vehicle = mob.getVehicle();
         if (vehicle != null) {
             mob.stopRiding();
             // A refused new chicken is not in the level; a chicken that was already there stays.
             if (level.getEntity(vehicle.getUUID()) != vehicle) vehicle.discard();
+            // finalizeSpawn marked it as a jockey, and a jockey chicken despawns when far away.
+            else if (vehicle instanceof net.minecraft.world.entity.animal.chicken.Chicken chicken) chicken.setChickenJockey(false);
         }
         var passengers = new ArrayList<Entity>();
         mob.getIndirectPassengers().forEach(passengers::add);
