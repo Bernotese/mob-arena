@@ -94,6 +94,20 @@ public class SuddenDeathGameTest {
             .thenSucceed();
     }
 
+    /** Q2: a team with 0 mobs to fight wins after the countdown. */
+    @GameTest(environment = "mobarena:arena_sd_empty", maxTicks = 800, skyAccess = true)
+    public void teamWithoutMobsWinsAfterCountdown(GameTestHelper h) {
+        var f = fixture(h, List.of(Map.of(), Map.of(), Map.of()), List.of(Map.of(ZOMBIE, 2), Map.of(), Map.of()));
+        h.startSequence()
+            .thenExecute(() -> equalEliminations(f))
+            .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.SUDDEN_DEATH, "SUDDEN_DEATH"))
+            .thenExecute(() -> h.assertTrue(f.group().battle(TeamId.RED).state() != BattleFlow.State.FINISHED,
+                    "RED is not finished before the countdown"))
+            .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.END, "Game ends after the countdown"))
+            .thenExecute(() -> h.assertValueEqual(result(f), "RED / Sudden death: All waves cleared", "Result"))
+            .thenSucceed();
+    }
+
     /** S3 */
     @GameTest(environment = "mobarena:arena_sd_down", maxTicks = 800, skyAccess = true)
     public void allDownLosesAtOnce(GameTestHelper h) {
