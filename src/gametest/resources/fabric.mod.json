@@ -7,6 +7,9 @@
   "entrypoints": {
     "fabric-gametest": [
       "dev.mobarena.gametest.MobArenaGameTest",
+      "dev.mobarena.gametest.CoreGameTest",
+      "dev.mobarena.gametest.LobbyGameTest",
+      "dev.mobarena.randomizer.RandomizerGameTest",
       "dev.mobarena.backpack.BackpackGameTest",
       "dev.mobarena.backpack.BackpackGuardGameTest"
     ]

@@ -1,27 +1,28 @@
 {
-	"schemaVersion": 1,
-	"id": "mobarena",
-	"version": "${version}",
-	"name": "Mob Arena",
-	"description": "Server-side team game: collect mobs, then send them as waves to the enemy team.",
-	"authors": [],
-	"license": "All-Rights-Reserved",
-	"environment": "*",
-	"entrypoints": {
-		"main": [
-			"dev.mobarena.MobArena"
-		]
-	},
-	"mixins": [
-		"mobarena.mixins.json",
-		"mobarena.backpack.mixins.json"
-	],
-	"depends": {
-		"fabricloader": ">=0.20.1",
-		"minecraft": "~26.3",
-		"java": ">=25",
-		"fabric-api": "*",
-		"fantasy": "*",
-		"sgui": "*"
-	}
+  "schemaVersion": 1,
+  "id": "mobarena",
+  "version": "${version}",
+  "name": "Mob Arena",
+  "description": "Server-side team game: collect mobs, then send them as waves to the enemy team.",
+  "authors": [],
+  "license": "All-Rights-Reserved",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.mobarena.MobArena"
+    ]
+  },
+  "mixins": [
+    "mobarena.mixins.json",
+    "mobarena.randomizer.mixins.json",
+    "mobarena.backpack.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.20.1",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*",
+    "fantasy": "*",
+    "sgui": "*"
+  }
 }
