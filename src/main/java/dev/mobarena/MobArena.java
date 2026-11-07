@@ -16,6 +16,7 @@ public final class MobArena implements ModInitializer {
         // Phase listeners run in the order registered here, before module listeners.
         ServerTickEvents.END_SERVER_TICK.register(server -> GameManager.get().tick());
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> GameManager.get().stop());
+        dev.mobarena.world.WorldModule.init();
 		LOGGER.info("Mob Arena loaded");
 	}
 }

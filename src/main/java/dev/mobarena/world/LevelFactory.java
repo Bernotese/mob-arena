@@ -44,6 +44,7 @@ public final class LevelFactory {
         var handle = Fantasy.get(server).openTemporaryLevel(id(team, kind), config(server, seed, kind));
         try { GameLevels.register(team, kind, handle.asLevel()); }
         catch (RuntimeException e) { handle.delete(); throw e; }
+        WorldCleanup.track(handle);
         return handle;
     }
 }
