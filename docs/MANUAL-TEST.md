@@ -101,3 +101,5 @@ Mark each item. Write the problem and the time if an item fails.
 - [ ] A player who joins during a game is a lobby spectator.
 
 At the end, use `/ma stop` or let the game end. Check that all players are in the lobby with empty inventories.
+
+- Run with `-Dmobarena.debug=true` and send the `MOBARENA_STANDING_ON_AIR` diagnostic lines for "standing on air" messages.

@@ -39,6 +39,8 @@ public final class ArenaBattles implements AutoCloseable {
 
     GameContext ctx() { return ctx; }
     RespawnManager respawns() { return respawns; }
+    /** Whether the arena respawn timer currently marks this player as down. */
+    public boolean isDown(UUID player) { return respawns.isDown(player); }
     int maxAliveMobs() { return maxAliveMobs; }
     /** Test hook: shorter respawn timer. */
     void setRespawnTicks(int ticks) { respawns.setRespawnTicks(ticks); }
