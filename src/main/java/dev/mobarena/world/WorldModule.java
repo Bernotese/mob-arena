@@ -41,7 +41,7 @@ public final class WorldModule {
         lobby.registerResetHook(WorldCleanup::clean);
         registerRejoinRouting(lobby);
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            if (GameManager.get().phase() == Phase.PREP) rememberPrepReturn(GameManager.get().context(), handler.player);
+            if (!handler.player.isDeadOrDying() && GameManager.get().phase() == Phase.PREP) rememberPrepReturn(GameManager.get().context(), handler.player);
         });
         GameManager.get().register(new PrepWorldManager());
         GameManager.get().register(new ArenaWorldManager());
