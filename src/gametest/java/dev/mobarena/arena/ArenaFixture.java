@@ -45,9 +45,12 @@ final class ArenaFixture implements AutoCloseable {
 
     /** Chat (system) messages per fixture player UUID. */
     final Map<UUID, List<String>> chat = new HashMap<>();
+    final Map<UUID, List<net.minecraft.network.protocol.Packet<?>>> packets = new HashMap<>();
     private ServerPlayer player(GameTestHelper h) {
         var messages = new ArrayList<String>();
-        var player = TestPlayers.recording(h, messages);
+        var sent = new ArrayList<net.minecraft.network.protocol.Packet<?>>();
+        var player = TestPlayers.recording(h, messages, sent);
+        packets.put(player.getUUID(), sent);
         chat.put(player.getUUID(), messages);
         return player;
     }
