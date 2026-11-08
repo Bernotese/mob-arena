@@ -201,6 +201,50 @@ public class FullGameTest {
             f.state(Phase.PREP); f.close(); h.succeed();
         } catch (RuntimeException | Error e) { f.close(); throw e; }
     }
+    @GameTest(environment = "mobarena:prep_end_respawn", maxTicks = 500)
+    public void prepEndDeathRespawnsInTeamOverworld(GameTestHelper h) {
+        prepDimensionDeath(h, true);
+    }
+
+    @GameTest(environment = "mobarena:prep_nether_respawn", maxTicks = 500)
+    public void prepNetherDeathRespawnsInTeamOverworld(GameTestHelper h) {
+        prepDimensionDeath(h, false);
+    }
+
+    private static void prepDimensionDeath(GameTestHelper h, boolean end) {
+        var f = new FullGameFixture(h, true, 1);
+        try {
+            for (var player : f.teamPlayers()) {
+                var world = f.ctx.get(TeamWorlds.KEY).get(f.ctx.team(player.getUUID()));
+                var deathLevel = (end ? world.end() : world.nether()).asLevel();
+                var position = new Vec3(0.5, 100, 0.5);
+                var transition = new net.minecraft.world.level.portal.TeleportTransition(
+                        deathLevel, position, Vec3.ZERO, 0, 0,
+                        net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING);
+                h.assertFalse(dev.mobarena.world.RespawnRouter.accepts(player, transition),
+                        "PREP rejects a respawn in the team Nether or End");
+                // A forced spawn makes vanilla return the forbidden team dimension.
+                player.setRespawnPosition(new ServerPlayer.RespawnConfig(
+                        new net.minecraft.world.level.storage.LevelData.RespawnData(
+                                net.minecraft.core.GlobalPos.of(deathLevel.dimension(),
+                                        net.minecraft.core.BlockPos.containing(position)), 0, 0), true), false);
+                player.teleport(transition);
+                f.down(player);
+                h.assertTrue(player.isDeadOrDying(), "Player dies in the team dimension during PREP");
+                player.connection.handleClientCommand(new net.minecraft.network.protocol.game.ServerboundClientCommandPacket(
+                        net.minecraft.network.protocol.game.ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
+                var respawned = player.connection.player;
+                h.assertTrue(respawned.isAlive(), "Client respawn request restores the player");
+                h.assertTrue(respawned.level() == world.overworld().asLevel(), "PREP respawn selects the team overworld");
+                h.assertTrue(respawned.position().distanceTo(Vec3.atBottomCenterOf(world.prepSpawn())) < 1,
+                        "PREP respawn selects the prep spawn");
+            }
+            f.state(Phase.PREP);
+            f.close();
+            h.succeed();
+        } catch (RuntimeException | Error e) { f.close(); throw e; }
+    }
+
     private static boolean hasBackpack(ServerPlayer p) {
         for (int i = 0; i < p.getInventory().getContainerSize(); i++)
             if (GuardedItems.hasTag(p.getInventory().getItem(i), BackpackItem.TAG)) return true;
