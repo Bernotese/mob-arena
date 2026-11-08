@@ -79,6 +79,7 @@ final class ArenaFixture implements AutoCloseable {
 
     @Override public void close() {
         if (game.context() == ctx) TestEnd.stopStaleGame();
+        // Restore the source captured before this fixture installed its prep override.
         game.setConfigSource(previousConfig);
         for (var p : new ServerPlayer[]{red, blue, mate}) if (p != null && ctx.server().getPlayerList().getPlayer(p.getUUID()) != null)
             ctx.server().getPlayerList().remove(p);

@@ -109,7 +109,10 @@ public final class ArenaBattles implements AutoCloseable {
         if (battle == null || battle.arena().isEmpty()) return;
         switch (battle.state()) {
             case ELIMINATED -> onEliminatedRejoin(player, battle);
-            case PREP, FINISHED -> battle.placeAtSpawn(player);
+            case PREP, FINISHED -> {
+                respawns.cancel(player.getUUID());
+                battle.placeAtSpawn(player);
+            }
             case WAITING_ARENA -> { }
             default -> respawns.down(player, battle, false);
         }
