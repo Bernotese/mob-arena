@@ -98,6 +98,7 @@ public final class GameManager {
                 default -> -1;
             };
             context.timer().reset(seconds < 0 ? -1 : seconds * 20);
+            if (context.server() != null) DeadPlayers.reviveTeamPlayers(context);
             notifyListeners("enter", listener -> listener.onEnter(next, context));
             if (next == Phase.LOBBY) { context.clear(); context = null; }
         } finally { transitioning = false; }

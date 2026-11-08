@@ -62,6 +62,9 @@ public final class ArenaBattles implements AutoCloseable {
     /** Returns false when the arena-ready timeout ends the game. */
     boolean tick() {
         long now = ctx.server().getTickCount();
+        for (var team : TeamId.values()) for (var player : onlinePlayers(team)) {
+            if (player.isDeadOrDying()) dev.mobarena.core.DeadPlayers.revive(player);
+        }
         boolean waiting = false;
         for (var battle : all()) { battle.tick(now); waiting |= battle.waiting(); }
         respawns.tick(now);

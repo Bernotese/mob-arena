@@ -19,6 +19,8 @@ public final class ArenaModule {
                 var group = ArenaBattles.get(ctx);
                 if (group != null) group.rejoin(player);
             });
+        }
+        for (Phase phase : new Phase[]{Phase.ARENA, Phase.SUDDEN_DEATH, Phase.END}) {
             // Fallback if a vanilla death still happens: respawn in the own arena, then the timer starts.
             RespawnRouter.register(phase, player -> {
                 var group = ArenaBattles.get(GameManager.get().context());

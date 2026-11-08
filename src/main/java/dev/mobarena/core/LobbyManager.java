@@ -50,7 +50,7 @@ public final class LobbyManager implements PhaseListener {
 
     public void leave(ServerPlayer player) {
         GameManager game = GameManager.get(); GameContext ctx = game.context();
-        if (ctx != null && ctx.team(player.getUUID()) != null && game.phase() != Phase.WAVE_CONFIG)
+        if (!player.isDeadOrDying() && ctx != null && ctx.team(player.getUUID()) != null && game.phase() != Phase.WAVE_CONFIG)
             returns.put(player.getUUID(), new ReturnPosition(player.level(), player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
     }
 
