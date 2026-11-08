@@ -40,6 +40,13 @@ public final class MobArenaConfig {
             for (String key : json.keySet()) if (!known.contains(key)) dev.mobarena.MobArena.LOGGER.warn("Unknown config key: {}", key);
             MobArenaConfig c = GSON.fromJson(json, MobArenaConfig.class);
             if (c == null) throw new IllegalArgumentException("Empty config");
+            var bounds = ConfigBounds.requireBounds("waveMaxTimeSeconds");
+            int clamped = Math.clamp(c.waveMaxTimeSeconds, bounds.min(), bounds.max());
+            if (clamped != c.waveMaxTimeSeconds) {
+                dev.mobarena.MobArena.LOGGER.warn("Clamping waveMaxTimeSeconds from {} to {} while loading {}",
+                        c.waveMaxTimeSeconds, clamped, path);
+                c.waveMaxTimeSeconds = clamped;
+            }
             c.validate(); return c;
         }
     }

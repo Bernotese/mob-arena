@@ -62,8 +62,8 @@ public final class LobbyManager implements PhaseListener {
         ReturnPosition pos = returns.remove(player.getUUID());
         if (pos != null && player.level().getServer().getLevel(pos.level.dimension()) != null) {
             player.teleportTo(pos.level, pos.x, pos.y, pos.z, Set.of(), pos.yaw, pos.pitch, true);
-            Teleports.clearSupport(player);
             player.setGameMode(game.phase() == Phase.PREP ? GameType.SURVIVAL : GameType.SPECTATOR);
+            Teleports.clearSupport(player);
             protect(player, player.isSpectator());
         } else {
             ServerLevel level = game.phase() == Phase.PREP ? ctx.prepLevel(ctx.team(player.getUUID())) : ctx.arenaLevel(ctx.team(player.getUUID()));
@@ -71,8 +71,8 @@ public final class LobbyManager implements PhaseListener {
             else {
                 var data = level.getRespawnData();
                 player.teleportTo(level, data.pos().getX() + 0.5, data.pos().getY(), data.pos().getZ() + 0.5, Set.of(), data.yaw(), data.pitch(), true);
-                Teleports.clearSupport(player);
                 player.setGameMode(game.phase() == Phase.PREP ? GameType.SURVIVAL : GameType.SPECTATOR);
+                Teleports.clearSupport(player);
                 protect(player, player.isSpectator());
             }
         }
@@ -139,10 +139,31 @@ public final class LobbyManager implements PhaseListener {
 
     public void sendToLobby(ServerPlayer player, boolean spectator) {
         prepare(player.level().getServer());
-        player.teleportTo(player.level().getServer().overworld(), spawn.x, spawn.y, spawn.z, Set.of(), spawn.yaw, spawn.pitch, true);
-        Teleports.clearSupport(player);
+        var target = lobbyPosition(player);
+        player.teleportTo(player.level().getServer().overworld(), target.x, target.y, target.z, Set.of(), spawn.yaw, spawn.pitch, true);
         player.setGameMode(spectator ? GameType.SPECTATOR : GameType.ADVENTURE);
+        Teleports.clearSupport(player);
         protect(player, true);
+    }
+
+    /** Spread only across full floor faces with empty standing space; skip carpet and pressure plates. */
+    private net.minecraft.world.phys.Vec3 lobbyPosition(ServerPlayer player) {
+        var level = player.level().getServer().overworld();
+        var center = new net.minecraft.world.phys.Vec3(spawn.x, spawn.y, spawn.z);
+        for (int radius = 0; radius <= 3; radius++) {
+            for (int x = -radius; x <= radius; x++) for (int z = -radius; z <= radius; z++) {
+                if (Math.max(Math.abs(x), Math.abs(z)) != radius) continue;
+                var target = center.add(x, 0, z);
+                var below = BlockPos.containing(target).below();
+                if (!level.getBlockState(below).isFaceSturdy(level, below, net.minecraft.core.Direction.UP)) continue;
+                var box = player.getBoundingBox().move(target.subtract(player.position()));
+                if (!level.noCollision(player, box)) continue;
+                boolean occupied = level.getServer().getPlayerList().getPlayers().stream().anyMatch(other ->
+                        other != player && other.level() == level && other.position().distanceToSqr(target) < 0.81);
+                if (!occupied) return target;
+            }
+        }
+        return center;
     }
 
     private void protect(ServerPlayer player, boolean protect) {
