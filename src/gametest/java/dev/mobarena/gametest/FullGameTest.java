@@ -215,6 +215,15 @@ public class FullGameTest {
             var hub = f.ctx.get(WaveKeys.HUBS).get(TeamId.RED);
             WaveConfigGui first = hub.open(f.red), second = hub.open(f.redMate);
             h.assertTrue(first != null && second != null && first.isOpen() && second.isOpen(), "Both wave menus open");
+            assertSelectedWave(h, first, 1);
+            assertSelectedWave(h, second, 1);
+            waveClick(f.red, 30, 0);
+            assertSelectedWave(h, first, 2);
+            assertSelectedWave(h, second, 1);
+            waveClick(f.red, 31, 0);
+            assertSelectedWave(h, first, 3);
+            waveClick(f.red, 29, 0);
+            assertSelectedWave(h, first, 1);
             waveClick(f.red, 0, 0);
             var setup = f.ctx.get(WaveKeys.SETUPS).get(TeamId.RED);
             h.assertTrue(setup.waveCount(1, "minecraft:zombie") == 1, "Container click moves one mob");
@@ -239,6 +248,15 @@ public class FullGameTest {
                 menu.containerId, menu.getStateId(), (short) slot, (byte) button, ContainerInput.PICKUP,
                 new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(), net.minecraft.network.HashedStack.EMPTY));
     }
+    private static void assertSelectedWave(GameTestHelper h, WaveConfigGui gui, int selected) {
+        for (int wave = 1; wave <= 3; wave++) {
+            var stack = gui.getGuiElement(28 + wave).getItemStack();
+            h.assertTrue(stack.getHoverName().getString().equals((wave == selected ? "▶ " : "") + "Wave " + wave),
+                    "Only the selected wave has the name prefix");
+            h.assertTrue(stack.hasFoil() == (wave == selected), "Only the selected wave has a glint");
+        }
+    }
+
     private static void assertCount(GameTestHelper h, WaveConfigGui gui, int slot, int count) {
         var element = gui.getGuiElement(slot);
         h.assertTrue(element != null && element.getItemStack().get(DataComponents.LORE).lines().stream()
