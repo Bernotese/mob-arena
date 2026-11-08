@@ -61,32 +61,46 @@ public class PolishGameTest {
             var lobby = new LobbyManager(path);
             // A new config builds a known platform, even when a previous run's world was deleted.
             lobby.prepare(f.server);
+            var saved = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(path))
+                    .getAsJsonObject().getAsJsonObject("spawn");
+            var center = new Vec3(saved.get("x").getAsDouble(), saved.get("y").getAsDouble(), saved.get("z").getAsDouble());
             var positions = new HashSet<Vec3>();
             for (var player : f.players) {
                 lobby.sendToLobby(player, false);
                 h.assertTrue(player.level() == f.server.overworld(), "Player returns to the lobby");
+                for (var position : positions)
+                    h.assertTrue(player.position().distanceToSqr(position) >= 4.0, "Lobby players stand at least two blocks apart");
                 h.assertTrue(positions.add(player.position()), "Each player has a separate lobby position");
+                var offset = player.position().subtract(center);
+                h.assertTrue(Math.abs(offset.x) <= 4 && Math.abs(offset.z) <= 4 && Math.abs(offset.y) < 0.001,
+                        "Lobby candidates stay inside the platform interior");
+                h.assertTrue(offset.x % 2 == 0 && offset.z % 2 == 0, "Lobby candidates use a two-block grid");
                 h.assertTrue(player.verticalCollisionBelow, "Lobby position has support");
                 h.assertTrue(player.level().noCollision(player, player.getBoundingBox()), "Lobby position has enough space");
             }
+            f.red.teleportTo(f.server.overworld(), center.x, center.y, center.z, Set.of(), 0, 0, true);
             lobby.setSpawn(f.red);
             // Keep the saved spawn supported so prepare does not rebuild the platform.
             // Occupy the center and remove the first spread candidate instead.
             f.redMate.teleportTo(f.red.getX() + 20, f.red.getY(), f.red.getZ());
             f.blueMate.teleportTo(f.red.getX() + 22, f.red.getY(), f.red.getZ());
             f.blue.teleportTo(f.red.getX(), f.red.getY(), f.red.getZ());
-            var hole = f.red.blockPosition().below().offset(-1, 0, -1);
+            var hole = f.red.blockPosition().below().offset(-2, 0, -2);
             var holePosition = Vec3.atBottomCenterOf(hole.above());
             h.assertTrue(f.server.getPlayerList().getPlayers().stream().noneMatch(player ->
-                    player.level() == f.server.overworld() && player.position().distanceToSqr(holePosition) < 0.81),
+                    player.level() == f.server.overworld() && player.position().distanceToSqr(holePosition) < 4.0),
                     "The first spread candidate is unoccupied before removing its floor");
             var old = f.server.overworld().getBlockState(hole);
+            h.assertTrue(!old.getCollisionShape(f.server.overworld(), hole).isEmpty(),
+                    "The first spread candidate has floor support before removing it");
             f.server.overworld().setBlockAndUpdate(hole, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
             try {
                 lobby.sendToLobby(f.red, false);
                 h.assertTrue(f.server.overworld().getBlockState(hole).isAir(), "Prepare leaves the test hole open");
                 h.assertTrue(!f.red.blockPosition().below().equals(hole), "Lobby spread avoids the floor hole");
                 h.assertTrue(f.red.verticalCollisionBelow, "Alternate lobby block has support");
+                h.assertTrue(f.red.position().distanceToSqr(f.blue.position()) >= 4.0,
+                        "The alternate lobby block keeps two blocks from the occupied center");
             } finally { f.server.overworld().setBlockAndUpdate(hole, old); }
         } catch (java.io.IOException e) { throw new IllegalStateException(e); }
         f.close(); h.succeed();

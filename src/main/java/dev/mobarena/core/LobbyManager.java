@@ -148,19 +148,19 @@ public final class LobbyManager implements PhaseListener {
         protect(player, true);
     }
 
-    /** Spread across supported positions with empty standing space. */
+    /** Use a two-block grid inside the platform, with at least two blocks between players. */
     private net.minecraft.world.phys.Vec3 lobbyPosition(ServerPlayer player) {
         var level = player.level().getServer().overworld();
         var center = new net.minecraft.world.phys.Vec3(spawn.x, spawn.y, spawn.z);
-        for (int radius = 0; radius <= 3; radius++) {
-            for (int x = -radius; x <= radius; x++) for (int z = -radius; z <= radius; z++) {
+        for (int radius = 0; radius <= 4; radius += 2) {
+            for (int x = -radius; x <= radius; x += 2) for (int z = -radius; z <= radius; z += 2) {
                 if (Math.max(Math.abs(x), Math.abs(z)) != radius) continue;
                 var target = center.add(x, 0, z);
                 if (!hasSupport(level, target.x, target.y, target.z)) continue;
                 var box = player.getBoundingBox().move(target.subtract(player.position()));
                 if (!level.noCollision(player, box)) continue;
                 boolean occupied = level.getServer().getPlayerList().getPlayers().stream().anyMatch(other ->
-                        other != player && other.level() == level && other.position().distanceToSqr(target) < 0.81);
+                        other != player && other.level() == level && other.position().distanceToSqr(target) < 4.0);
                 if (!occupied) return target;
             }
         }
