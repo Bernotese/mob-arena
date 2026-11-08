@@ -23,11 +23,16 @@ public final class ArenaModule {
         for (Phase phase : new Phase[]{Phase.ARENA, Phase.SUDDEN_DEATH, Phase.END}) {
             // Fallback if a vanilla death still happens: respawn in the own arena, then the timer starts.
             RespawnRouter.register(phase, player -> {
-                var group = ArenaBattles.get(GameManager.get().context());
-                var team = group == null ? null : group.ctx().team(player.getUUID());
-                var battle = team == null ? null : group.battle(team);
-                if (battle == null || battle.arena().isEmpty()) return Optional.empty();
-                var arena = battle.arena().get();
+                var ctx = GameManager.get().context();
+                var team = ctx == null ? null : ctx.team(player.getUUID());
+                if (team == null) return Optional.empty();
+                // END entry runs after the previous battle group has closed.
+                var group = ArenaBattles.get(ctx);
+                var battle = group == null ? null : group.battle(team);
+                var target = phase == Phase.END ? Arena.fromWorlds(ctx, team)
+                        : battle == null ? Optional.<Arena>empty() : battle.arena();
+                if (target.isEmpty()) return Optional.empty();
+                var arena = target.get();
                 return Optional.of(new TeleportTransition(arena.level(), Vec3.atBottomCenterOf(arena.layout().teamSpawn()),
                         Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
             });

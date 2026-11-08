@@ -67,6 +67,15 @@ final class FullGameFixture implements AutoCloseable {
         return java.util.stream.Stream.of(red, redMate, blue, blueMate).filter(Objects::nonNull).toList();
     }
     ServerPlayer player() { var p = TestPlayers.create(h); players.add(p); return p; }
+    ServerPlayer live(ServerPlayer player) { return server.getPlayerList().getPlayer(player.getUUID()); }
+    void deathScreen(ServerPlayer player) {
+        acceptLoad(player);
+        var source = player.damageSources().fellOutOfWorld();
+        player.hurtServer(player.level(), source, Float.MAX_VALUE);
+        if (!player.isDeadOrDying()) { player.setHealth(0); player.die(source); }
+        h.assertTrue(player.isDeadOrDying(), "Player reaches the death screen");
+        player.remove(net.minecraft.world.entity.Entity.RemovalReason.KILLED);
+    }
     void command(String command, ServerPlayer player) {
         try { h.assertTrue(server.getCommands().getDispatcher().execute(command, player.createCommandSourceStack()) == 1,
                 "Command succeeds: " + command); }
@@ -84,14 +93,16 @@ final class FullGameFixture implements AutoCloseable {
     }
     void arena() {
         for (var team : TeamId.values()) DebugDriver.poolAdd(team, "cow", 3);
-        waveConfig();
+        if (game.phase() == Phase.PREP) waveConfig();
         for (var team : TeamId.values()) DebugDriver.waves(team, "cow:1", "cow:1", "cow:1");
         admin("ma skip");
     }
     ArenaBattle battle(TeamId team) { return ArenaBattles.get(ctx).battle(team); }
     void arenaReady() {
         h.assertTrue(game.phase() == Phase.ARENA, "Game remains in ARENA");
-        for (var p : teamPlayers()) {
+        for (var old : teamPlayers()) {
+            var p = live(old);
+            if (p == null) continue;
             var battle = battle(ctx.team(p.getUUID()));
             h.assertTrue(battle != null && battle.running() && p.level() == ctx.arenaLevel(ctx.team(p.getUUID())),
                     "Team player enters a running arena");
