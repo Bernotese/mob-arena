@@ -110,7 +110,7 @@ public class LobbyGameTest {
             var slab = net.minecraft.world.level.block.Blocks.STONE_SLAB.defaultBlockState()
                     .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.SLAB_TYPE,
                             net.minecraft.world.level.block.state.properties.SlabType.BOTTOM);
-            for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++) {
+            for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++) {
                 var tile = floor.offset(x, 0, z);
                 level.setBlockAndUpdate(tile.below(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
                 level.setBlockAndUpdate(tile, slab);
@@ -127,8 +127,8 @@ public class LobbyGameTest {
             helper.assertValueEqual(Files.readString(path), saved, "Preparing a custom slab spawn keeps its saved data");
             loaded.sendToLobby(player, false);
             loaded.sendToLobby(second, false);
-            helper.assertTrue(player.position().distanceToSqr(second.position()) >= 0.81,
-                    "Players spread to separate positions on the bottom-slab floor");
+            helper.assertTrue(player.position().distanceToSqr(second.position()) >= 4.0,
+                    "Players spread at least two blocks apart on the bottom-slab floor");
             helper.assertTrue(second.verticalCollisionBelow && Math.abs(second.getY() - floor.getY() - 0.5) < 0.001,
                     "The spread position has slab support at the half-block height");
             helper.assertTrue(Math.abs(player.getY() - floor.getY() - 0.5) < 0.001, "Lobby return keeps the half-block spawn height");
