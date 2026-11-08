@@ -6,6 +6,26 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 class MobArenaConfigTest {
     @TempDir Path directory;
+    @Test void shortWaveTimeRequiresDebugMode() throws Exception {
+        String previous = System.getProperty("mobarena.debug");
+        try {
+            System.clearProperty("mobarena.debug");
+            ConfigStore store = new ConfigStore(directory.resolve("debug.json"));
+            assertThrows(IllegalArgumentException.class, () -> store.set("waveMaxTimeSeconds", "2"));
+            System.setProperty("mobarena.debug", "true");
+            store.set("waveMaxTimeSeconds", "2");
+            assertEquals(2, MobArenaConfig.load(directory.resolve("debug.json")).waveMaxTimeSeconds);
+            assertEquals(1, store.bounds("waveMaxTimeSeconds").min());
+            assertThrows(IllegalArgumentException.class, () -> store.set("waveMaxTimeSeconds", "0"));
+            assertThrows(IllegalArgumentException.class, () -> store.set("suddenDeathMaxTimeSeconds", "2"));
+            System.clearProperty("mobarena.debug");
+            assertEquals(60, store.bounds("waveMaxTimeSeconds").min());
+        } finally {
+            if (previous == null) System.clearProperty("mobarena.debug");
+            else System.setProperty("mobarena.debug", previous);
+        }
+    }
+
     @Test void roundTripAllFieldsAndStoreUpdates() throws Exception {
         Path path = directory.resolve("mob-arena.json");
         MobArenaConfig config = MobArenaConfig.load(path);

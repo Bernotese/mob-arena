@@ -14,17 +14,20 @@ public final class TestPlayers {
     private TestPlayers() {}
     public static ServerPlayer create(GameTestHelper helper) { return create(helper, player -> {}); }
     public static ServerPlayer create(GameTestHelper helper, java.util.function.Consumer<ServerPlayer> beforeJoin) {
-        return create(helper, UUID.randomUUID(), beforeJoin, null);
+        return create(helper, UUID.randomUUID(), beforeJoin, null, null);
     }
     /** Test player that also records its chat (system) messages into {@code messages}. */
     public static ServerPlayer recording(GameTestHelper helper, java.util.List<String> messages) {
-        return create(helper, UUID.randomUUID(), player -> {}, java.util.Objects.requireNonNull(messages));
+        return create(helper, UUID.randomUUID(), player -> {}, java.util.Objects.requireNonNull(messages), null);
     }
     public static ServerPlayer create(GameTestHelper helper, UUID id, java.util.function.Consumer<ServerPlayer> beforeJoin) {
-        return create(helper, id, beforeJoin, null);
+        return create(helper, id, beforeJoin, null, null);
+    }
+    public static ServerPlayer recordingPackets(GameTestHelper helper, java.util.List<Object> packets) {
+        return create(helper, UUID.randomUUID(), player -> {}, null, packets);
     }
     private static ServerPlayer create(GameTestHelper helper, UUID id, java.util.function.Consumer<ServerPlayer> beforeJoin,
-                                       java.util.List<String> messages) {
+                                       java.util.List<String> messages, java.util.List<Object> packets) {
         GameProfile profile = new GameProfile(id, "test_" + id.toString().substring(0, 8));
         var cookie = CommonListenerCookie.createInitial(profile, false);
         var server = helper.getLevel().getServer();
@@ -37,7 +40,14 @@ public final class TestPlayers {
                 };
         beforeJoin.accept(player);
         Connection connection = new Connection(PacketFlow.SERVERBOUND);
-        new EmbeddedChannel(connection);
+        var channel = new EmbeddedChannel(connection);
+        if (packets != null) channel.pipeline().addLast(new io.netty.channel.ChannelOutboundHandlerAdapter() {
+            @Override public void write(io.netty.channel.ChannelHandlerContext context, Object packet,
+                                        io.netty.channel.ChannelPromise promise) throws Exception {
+                packets.add(packet);
+                super.write(context, packet, promise);
+            }
+        });
         server.getPlayerList().placeNewPlayer(connection, player, cookie);
         return player;
     }
