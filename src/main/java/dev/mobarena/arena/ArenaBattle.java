@@ -116,7 +116,33 @@ public final class ArenaBattle {
     public void setPrepLeft(int ticks) { flow.setPrepLeft(ticks); }
 
     void placeAtSpawn(ServerPlayer player) {
-        Vec3 spawn = Vec3.atBottomCenterOf(arena.layout().teamSpawn());
+        placeAt(player, Vec3.atBottomCenterOf(arena.layout().teamSpawn()));
+    }
+
+    /** Rejoin only: prefer a supported, unoccupied position within three blocks of the spawn. */
+    void placeRejoiningPlayer(ServerPlayer player) {
+        Vec3 center = Vec3.atBottomCenterOf(arena.layout().teamSpawn());
+        var level = arena.level();
+        for (int radius = 0; radius <= 3; radius++) {
+            for (int x = -radius; x <= radius; x++) for (int z = -radius; z <= radius; z++) {
+                if (Math.max(Math.abs(x), Math.abs(z)) != radius) continue;
+                var target = center.add(x, 0, z);
+                var box = player.getBoundingBox().move(target.subtract(player.position()));
+                var feet = new net.minecraft.world.phys.AABB(box.minX, box.minY - 1.0E-6, box.minZ,
+                        box.maxX, box.minY, box.maxZ);
+                if (level.findSupportingBlock(player, feet).isEmpty() || !level.noCollision(player, box)) continue;
+                boolean occupied = level.players().stream().anyMatch(other -> other != player
+                        && (other.position().distanceToSqr(target) < 1.0 || other.getBoundingBox().intersects(box)));
+                if (!occupied) {
+                    placeAt(player, target);
+                    return;
+                }
+            }
+        }
+        placeAt(player, center);
+    }
+
+    private void placeAt(ServerPlayer player, Vec3 spawn) {
         player.stopRiding();
         player.teleportTo(arena.level(), spawn.x, spawn.y, spawn.z, Set.of(), player.getYRot(), 0, true);
         player.setGameMode(GameType.SURVIVAL);

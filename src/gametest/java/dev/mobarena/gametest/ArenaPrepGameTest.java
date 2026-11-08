@@ -167,6 +167,37 @@ public class ArenaPrepGameTest {
         })).thenExecute(f::close).thenSucceed();
     }
 
+    @GameTest(environment = "mobarena:arena_prep_rejoin_space", maxTicks = 400)
+    public void rejoinDuringPreparationAvoidsPlayersHolesAndObstructions(GameTestHelper h) {
+        var f = new FullGameFixture(h, true, 2, 5);
+        f.arena();
+        h.startSequence().thenWaitUntil(() -> preparing(f)).thenExecute(f.check(() -> {
+            var level = f.ctx.arenaLevel(TeamId.RED);
+            var spawnBlock = f.ctx.get(TeamWorlds.KEY).get(TeamId.RED).layout().teamSpawn();
+            var center = Vec3.atBottomCenterOf(spawnBlock);
+            f.redMate.teleportTo(level, center.x, center.y, center.z, Set.of(), 0, 0, true);
+            // The first candidate has no floor; the next has no standing space.
+            level.setBlockAndUpdate(spawnBlock.offset(-1, -1, -1), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+            level.setBlockAndUpdate(spawnBlock.offset(-1, 0, 0), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+            ServerPlayConnectionEvents.DISCONNECT.invoker().onPlayDisconnect(f.red.connection, f.server);
+            f.server.getPlayerList().remove(f.red);
+            var joined = TestPlayers.create(h, f.red.getUUID(), player -> {});
+            f.players.add(joined);
+            RejoinGameTest.assertSingle(f, level);
+            h.assertTrue(joined.gameMode() == GameType.SURVIVAL, "Rejoin during preparation returns in survival");
+            h.assertTrue(Math.abs(joined.getX() - center.x) <= 3 && Math.abs(joined.getZ() - center.z) <= 3
+                    && Math.abs(joined.getY() - center.y) < 0.001, "Rejoin stays near the team spawn at floor height");
+            h.assertTrue(level.players().stream().filter(other -> other != joined).noneMatch(other ->
+                    other.position().distanceToSqr(joined.position()) < 1.0
+                            || other.getBoundingBox().intersects(joined.getBoundingBox())), "Rejoin does not overlap another player");
+            h.assertTrue(joined.verticalCollisionBelow && level.noCollision(joined, joined.getBoundingBox()),
+                    "Rejoin selects a supported position with standing space");
+            h.assertTrue(!joined.blockPosition().equals(spawnBlock.offset(-1, 0, -1))
+                    && !joined.blockPosition().equals(spawnBlock.offset(-1, 0, 0)), "Rejoin skips the hole and the obstruction");
+            ArenaPrepChecks.assertNotDown(h, f.ctx, joined.getUUID());
+        })).thenExecute(f::close).thenSucceed();
+    }
+
     @GameTest(environment = "mobarena:arena_prep_sd", maxTicks = 400)
     public void suddenDeathStartsWithoutArenaPreparation(GameTestHelper h) {
         var f = new FullGameFixture(h, true, 1, 2);
