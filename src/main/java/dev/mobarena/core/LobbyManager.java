@@ -115,7 +115,7 @@ public final class LobbyManager implements PhaseListener {
             BlockPos pos = server.overworld().getRespawnData().pos();
             spawn = new Spawn(pos.getX() + 0.5, Math.max(pos.getY(), 80) + 3, pos.getZ() + 0.5, 0, 0);
             buildPlatform(server.overworld()); save();
-        } else if (server.overworld().getBlockState(BlockPos.containing(spawn.x, spawn.y - 0.01, spawn.z)).isAir()) {
+        } else if (!hasSupport(server.overworld(), spawn.x, spawn.y, spawn.z)) {
             buildPlatform(server.overworld());
         }
     }
@@ -148,7 +148,7 @@ public final class LobbyManager implements PhaseListener {
         protect(player, true);
     }
 
-    /** Spread only across full floor faces with empty standing space; skip carpet and pressure plates. */
+    /** Spread across supported positions with empty standing space. */
     private net.minecraft.world.phys.Vec3 lobbyPosition(ServerPlayer player) {
         var level = player.level().getServer().overworld();
         var center = new net.minecraft.world.phys.Vec3(spawn.x, spawn.y, spawn.z);
@@ -156,8 +156,7 @@ public final class LobbyManager implements PhaseListener {
             for (int x = -radius; x <= radius; x++) for (int z = -radius; z <= radius; z++) {
                 if (Math.max(Math.abs(x), Math.abs(z)) != radius) continue;
                 var target = center.add(x, 0, z);
-                var below = BlockPos.containing(target).below();
-                if (!level.getBlockState(below).isFaceSturdy(level, below, net.minecraft.core.Direction.UP)) continue;
+                if (!hasSupport(level, target.x, target.y, target.z)) continue;
                 var box = player.getBoundingBox().move(target.subtract(player.position()));
                 if (!level.noCollision(player, box)) continue;
                 boolean occupied = level.getServer().getPlayerList().getPlayers().stream().anyMatch(other ->
@@ -166,6 +165,14 @@ public final class LobbyManager implements PhaseListener {
             }
         }
         return center;
+    }
+
+    private static boolean hasSupport(ServerLevel level, double x, double y, double z) {
+        var below = BlockPos.containing(x, y - 0.01, z);
+        var feet = new net.minecraft.world.phys.AABB(x - 0.3, y - 0.01, z - 0.3, x + 0.3, y, z + 0.3);
+        var shape = level.getBlockState(below).getCollisionShape(level, below).move(below.getX(), below.getY(), below.getZ());
+        return net.minecraft.world.phys.shapes.Shapes.joinIsNotEmpty(shape,
+                net.minecraft.world.phys.shapes.Shapes.create(feet), net.minecraft.world.phys.shapes.BooleanOp.AND);
     }
 
     private void protect(ServerPlayer player, boolean protect) {

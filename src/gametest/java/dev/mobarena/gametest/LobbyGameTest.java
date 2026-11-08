@@ -101,6 +101,7 @@ public class LobbyGameTest {
     @GameTest
     public void savedCustomLobbyOnBottomSlabOverAirStaysUnchanged(GameTestHelper helper) throws Exception {
         var player = TestPlayers.create(helper);
+        var second = TestPlayers.create(helper);
         var server = helper.getLevel().getServer();
         var level = server.overworld();
         Path path = Files.createTempDirectory("mobarena-slab-lobby-test").resolve("lobby.json");
@@ -109,10 +110,13 @@ public class LobbyGameTest {
             var slab = net.minecraft.world.level.block.Blocks.STONE_SLAB.defaultBlockState()
                     .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.SLAB_TYPE,
                             net.minecraft.world.level.block.state.properties.SlabType.BOTTOM);
-            level.setBlockAndUpdate(floor.below(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
-            level.setBlockAndUpdate(floor, slab);
-            level.setBlockAndUpdate(floor.above(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
-            level.setBlockAndUpdate(floor.above(2), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+            for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++) {
+                var tile = floor.offset(x, 0, z);
+                level.setBlockAndUpdate(tile.below(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+                level.setBlockAndUpdate(tile, slab);
+                level.setBlockAndUpdate(tile.above(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+                level.setBlockAndUpdate(tile.above(2), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+            }
             player.teleportTo(level, floor.getX() + 0.5, floor.getY() + 0.5, floor.getZ() + 0.5, Set.of(), 35, 12, true);
             new LobbyManager(path).setSpawn(player);
             String saved = Files.readString(path);
@@ -122,6 +126,11 @@ public class LobbyGameTest {
             helper.assertTrue(level.getBlockState(floor.below()).isAir(), "Preparing a custom slab spawn preserves the air below");
             helper.assertValueEqual(Files.readString(path), saved, "Preparing a custom slab spawn keeps its saved data");
             loaded.sendToLobby(player, false);
+            loaded.sendToLobby(second, false);
+            helper.assertTrue(player.position().distanceToSqr(second.position()) >= 0.81,
+                    "Players spread to separate positions on the bottom-slab floor");
+            helper.assertTrue(second.verticalCollisionBelow && Math.abs(second.getY() - floor.getY() - 0.5) < 0.001,
+                    "The spread position has slab support at the half-block height");
             helper.assertTrue(Math.abs(player.getY() - floor.getY() - 0.5) < 0.001, "Lobby return keeps the half-block spawn height");
             player.hasChangedDimension();
             player.connection.handleAcceptPlayerLoad(new net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket());
@@ -132,6 +141,7 @@ public class LobbyGameTest {
             helper.succeed();
         } finally {
             server.getPlayerList().remove(player); player.discard();
+            server.getPlayerList().remove(second); second.discard();
             Files.deleteIfExists(path); Files.deleteIfExists(path.getParent());
         }
     }
