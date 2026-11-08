@@ -32,6 +32,7 @@
       "dev.mobarena.arena.SuddenDeathGameTest",
       "dev.mobarena.gametest.SoundGameTest",
       "dev.mobarena.gametest.DeathScreenGameTest",
+      "dev.mobarena.gametest.RejoinGameTest",
       "dev.mobarena.gametest.PolishGameTest",
       "dev.mobarena.arena.TeleportCollisionGameTest",
       "dev.mobarena.gametest.ArenaPrepGameTest",

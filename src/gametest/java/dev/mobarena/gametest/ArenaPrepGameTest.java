@@ -154,8 +154,7 @@ public class ArenaPrepGameTest {
             for (var level : f.server.getAllLevels())
                 count += level.getEntities(net.minecraft.world.level.entity.EntityTypeTest.forClass(ServerPlayer.class),
                         player -> player.getUUID().equals(f.red.getUUID())).size();
-            // enable after T13a
-            // h.assertTrue(count == 1, "Rejoined UUID has exactly one player entity");
+            h.assertTrue(count == 1, "Rejoined UUID has exactly one player entity");
             h.assertTrue(f.server.getPlayerList().getPlayers().stream().filter(p -> p.getUUID().equals(f.red.getUUID())).count() == 1,
                     "PlayerList contains one rejoined UUID");
             var player = f.live(f.red);
