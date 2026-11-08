@@ -12,6 +12,44 @@ class BattleFlowTest {
         if(!empty) wave.put("zombie",3);
         return new BattleFlow(new BattleScript(Collections.nCopies(waves,wave),countdown,cooldown,max,glow));
     }
+    @Test void preparationExcludesTimeAndEliminationBeforeCountdown() {
+        var script = new BattleScript(List.of(new TreeMap<>(Map.of("cow", 1))), 60, 20, 200, 100, 40);
+        var f = new BattleFlow(script);
+        var absent = new TickInput(true, true, 0, 0, true, false);
+        assertEquals(List.of(new BattleEvent.Prep(2)), f.tick(absent));
+        for (int tick = 1; tick < 40; tick++) {
+            assertTrue(f.tick(absent).isEmpty());
+            assertEquals(BattleFlow.State.PREP, f.state());
+            assertEquals(0, f.elapsedTicks());
+            assertEquals(40 - tick, f.prepLeftTicks());
+        }
+        assertEquals(List.of(new BattleEvent.Countdown(1, 3)), f.tick(absent));
+        assertEquals(0, f.elapsedTicks());
+        assertEquals(0, f.prepLeftTicks());
+        for (int tick = 1; tick < 20; tick++) assertTrue(f.tick(live).isEmpty());
+        assertEquals(List.of(new BattleEvent.Countdown(1, 2)), f.tick(live));
+        assertEquals(20, f.elapsedTicks());
+    }
+    @Test void debugCanEndPreparationAndClampsItsTime() {
+        var f = new BattleFlow(new BattleScript(List.of(new TreeMap<>(Map.of("cow", 1))), 60, 0, 200, 100, 40));
+        assertThrows(IllegalStateException.class, () -> f.setPrepLeft(0));
+        f.tick(live);
+        f.setPrepLeft(500);
+        assertEquals(40, f.prepLeftTicks());
+        f.setPrepLeft(-10);
+        assertEquals(0, f.prepLeftTicks());
+        assertEquals(List.of(new BattleEvent.Countdown(1, 3)), f.tick(live));
+        assertThrows(IllegalStateException.class, () -> f.setPrepLeft(0));
+    }
+    @Test void prepKeepsZeroCountdownReadyBehaviorAndRejectsNegativeDuration() {
+        List<SortedMap<String, Integer>> waves = List.of(new TreeMap<>(Map.of("cow", 1)));
+        assertThrows(IllegalArgumentException.class, () -> new BattleScript(waves, 0, 0, 200, 100, -1));
+        var f = new BattleFlow(new BattleScript(waves, 0, 0, 200, 100, 1));
+        assertEquals(List.of(new BattleEvent.Prep(1)), f.tick(live));
+        assertEquals(List.of(new BattleEvent.Countdown(1, 0)), f.tick(live));
+        assertEquals(List.of(new BattleEvent.SpawnWave(1)), f.tick(live));
+    }
+
     @Test void waitsWithoutCountingTime() {
         var f=flow(1,20,0,100,50,false);
         for(int i=0;i<100;i++) assertTrue(f.tick(new TickInput(false,false,0,0,false,true)).isEmpty());

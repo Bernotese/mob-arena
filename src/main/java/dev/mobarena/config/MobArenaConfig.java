@@ -7,6 +7,7 @@ public final class MobArenaConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     public int prepTimeSeconds = 2700;
     public int waveConfigTimeSeconds = 180;
+    public int arenaPrepSeconds = 30;
     public int waveCountdownSeconds = 10;
     public int waveCooldownSeconds = 20;
     public int waveMaxTimeSeconds = 900;
@@ -18,7 +19,7 @@ public final class MobArenaConfig {
     public boolean randomizerEnabled = true;
     public List<String> mobBlacklist = new ArrayList<>(List.of("ender_dragon", "player", "armor_stand", "cod", "salmon", "tropical_fish", "pufferfish"));
     public String arenaTemplate = "default";
-    public record Snapshot(int prepTimeSeconds, int waveConfigTimeSeconds, int waveCountdownSeconds,
+    public record Snapshot(int prepTimeSeconds, int waveConfigTimeSeconds, int arenaPrepSeconds, int waveCountdownSeconds,
             int waveCooldownSeconds, int waveMaxTimeSeconds, int suddenDeathMaxTimeSeconds,
             int arenaRespawnSeconds, int mobGlowAfterSeconds, int endScreenSeconds, int maxAliveMobs,
             boolean randomizerEnabled, List<String> mobBlacklist, String arenaTemplate) {
@@ -26,7 +27,7 @@ public final class MobArenaConfig {
     }
     public Snapshot snapshot() {
         validate();
-        return new Snapshot(prepTimeSeconds, waveConfigTimeSeconds, waveCountdownSeconds, waveCooldownSeconds,
+        return new Snapshot(prepTimeSeconds, waveConfigTimeSeconds, arenaPrepSeconds, waveCountdownSeconds, waveCooldownSeconds,
             waveMaxTimeSeconds, suddenDeathMaxTimeSeconds, arenaRespawnSeconds, mobGlowAfterSeconds,
             endScreenSeconds, maxAliveMobs, randomizerEnabled, mobBlacklist, arenaTemplate);
     }

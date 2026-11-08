@@ -34,6 +34,7 @@ public final class GameManager {
     public void register(PhaseListener listener) { listeners.add(Objects.requireNonNull(listener)); }
     public Phase phase() { return phase; }
     public GameContext context() { return context; }
+    public Supplier<MobArenaConfig> configSource() { return config; }
     public void setConfigSource(Supplier<MobArenaConfig> source) { config = source; }
     public boolean start(MinecraftServer server, Map<UUID, TeamId> teams, Set<UUID> online) {
         return start(server, teams, online, new Random().nextLong());

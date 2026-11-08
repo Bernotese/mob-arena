@@ -14,8 +14,9 @@ import net.minecraft.world.item.Items;
 public final class ConfigGui extends SimpleGui {
     private static final String[] KEYS = {"prepTimeSeconds", "waveConfigTimeSeconds", "waveCountdownSeconds",
         "waveCooldownSeconds", "waveMaxTimeSeconds", "suddenDeathMaxTimeSeconds", "arenaRespawnSeconds",
-        "mobGlowAfterSeconds", "endScreenSeconds", "maxAliveMobs"};
-    private static final int[] STEPS = {60, 10, 1, 5, 30, 30, 1, 10, 1, 10};
+        "mobGlowAfterSeconds", "endScreenSeconds", "maxAliveMobs", "arenaPrepSeconds"};
+    private static final int[] STEPS = {60, 10, 1, 5, 30, 30, 1, 10, 1, 10, 5};
+    private static final int[] SLOTS = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13};
     private final ConfigGuiHub hub;
     private String error;
     ConfigGui(ServerPlayer player, ConfigGuiHub hub) {
@@ -33,11 +34,11 @@ public final class ConfigGui extends SimpleGui {
         for (int i = 0; i < KEYS.length; i++) {
             String key = KEYS[i];
             var range = hub.bounds(key);
-            var item = entry(i == 7 ? Items.GLOWSTONE_DUST : i == 9 ? Items.ZOMBIE_HEAD : Items.CLOCK,
+            var item = entry(key.equals("mobGlowAfterSeconds") ? Items.GLOWSTONE_DUST : key.equals("maxAliveMobs") ? Items.ZOMBIE_HEAD : Items.CLOCK,
                     key, config.get(key)).addLoreLine(Component.literal("Step: " + STEPS[i]))
                     .addLoreLine(Component.literal("Range: " + range.min() + "–" + range.max()));
-            int slot = i;
-            setSlot(i, item.setCallback((index, type, input, gui) -> handleClick(slot, type)).build());
+            int slot = SLOTS[i];
+            setSlot(slot, item.setCallback((index, type, input, gui) -> handleClick(slot, type)).build());
         }
         setSlot(10, entry(config.randomizerEnabled ? Items.DYE.lime() : Items.DYE.gray(), "randomizerEnabled",
                 Boolean.toString(config.randomizerEnabled))
@@ -81,10 +82,13 @@ public final class ConfigGui extends SimpleGui {
             if (slot == 22) { if (left && click.shift) hub.reset(); return; }
             var config = hub.current();
             if (slot == 10) hub.set("randomizerEnabled", Boolean.toString(ConfigStep.toggle(config.randomizerEnabled)));
-            else if (slot >= 0 && slot < KEYS.length) {
-                String key = KEYS[slot];
+            else {
+                int index = -1;
+                for (int i = 0; i < SLOTS.length; i++) if (SLOTS[i] == slot) { index = i; break; }
+                if (index < 0) return;
+                String key = KEYS[index];
                 var range = hub.bounds(key);
-                int next = new ConfigStep(STEPS[slot], range.min(), range.max())
+                int next = new ConfigStep(STEPS[index], range.min(), range.max())
                         .apply(Integer.parseInt(config.get(key)), right, click.shift);
                 hub.set(key, Integer.toString(next));
             }

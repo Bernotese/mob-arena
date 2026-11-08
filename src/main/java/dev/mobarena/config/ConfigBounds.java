@@ -9,6 +9,7 @@ public final class ConfigBounds {
     }
     private static final Map<String, Bounds> VALUES = Map.ofEntries(
         Map.entry("prepTimeSeconds", new Bounds(60, 14400)),
+        Map.entry("arenaPrepSeconds", new Bounds(0, 300)),
         Map.entry("waveConfigTimeSeconds", new Bounds(10, 1800)),
         Map.entry("waveCountdownSeconds", new Bounds(3, 60)),
         Map.entry("waveCooldownSeconds", new Bounds(1, 300)),

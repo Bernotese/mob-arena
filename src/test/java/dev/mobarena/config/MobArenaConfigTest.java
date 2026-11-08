@@ -6,6 +6,20 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 class MobArenaConfigTest {
     @TempDir Path directory;
+    @Test void arenaPreparationDefaultsBoundsAndLegacyJson() throws Exception {
+        var config = new MobArenaConfig();
+        assertEquals(30, config.arenaPrepSeconds);
+        assertEquals(30, config.snapshot().arenaPrepSeconds());
+        assertEquals(0, config.with("arenaPrepSeconds", "0").arenaPrepSeconds);
+        assertEquals(300, config.with("arenaPrepSeconds", "300").arenaPrepSeconds);
+        assertEquals(10, config.with("arenaPrepSeconds", "10").arenaPrepSeconds);
+        assertThrows(IllegalArgumentException.class, () -> config.with("arenaPrepSeconds", "-1"));
+        assertThrows(IllegalArgumentException.class, () -> config.with("arenaPrepSeconds", "301"));
+        Path legacy = directory.resolve("legacy.json");
+        Files.writeString(legacy, "{\"waveConfigTimeSeconds\":60}");
+        assertEquals(30, MobArenaConfig.load(legacy).arenaPrepSeconds);
+    }
+
     @Test void shortWaveTimeRequiresDebugMode() throws Exception {
         String previous = System.getProperty("mobarena.debug");
         try {

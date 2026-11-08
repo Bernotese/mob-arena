@@ -91,11 +91,12 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 
 ### 7.2 Flow
 1. All team players teleport to the team spawn point. Inventory, health and items stay as they were at the end of `PREP` (keep inventory). Health and hunger are filled.
-2. Countdown: 10 s (`waveCountdownSeconds`). A title shows the numbers.
-3. Wave N spawns. The mobs spawn spread over the spawn ring (around the arena).
-4. All mobs of wave N must die. Then the wave is cleared.
-5. Cooldown: 20 s (`waveCooldownSeconds`) for re-equip. Then wave N+1 starts with a countdown.
-6. After wave 3 is cleared, the team is **finished**. The mod saves the finish time.
+2. Preparation: 30 s (`arenaPrepSeconds`), only before wave 1. No mobs spawn. The boss bar shows the time left ("Get ready – 0:25"). Players can move, build and use items. The value 0 turns the preparation off. **[DEFAULT]**
+3. Countdown: 10 s (`waveCountdownSeconds`). A title shows the numbers.
+4. Wave N spawns. The mobs spawn spread over the spawn ring (around the arena).
+5. All mobs of wave N must die. Then the wave is cleared.
+6. Cooldown: 20 s (`waveCooldownSeconds`) for re-equip. Then wave N+1 starts with a countdown.
+7. After wave 3 is cleared, the team is **finished**. The mod saves the finish time. The time starts with the countdown of wave 1 (the preparation does not count).
 
 ### 7.3 Mobs in waves
 - Hostile mobs target the nearest living team player. The mod sets a large follow range.
@@ -111,6 +112,7 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 
 ### 7.4 Wave time limit
 - Each wave has a max time: 15 min (`waveMaxTimeSeconds = 900`).
+- The max time starts when the wave spawns. The preparation and the countdown do not count.
 - If the time ends before the wave is cleared, the team is **eliminated** at this wave. **[DEFAULT]**
 
 ### 7.5 Death and respawn
@@ -118,6 +120,8 @@ Items marked **[DEFAULT]** are decisions made by `orchestrator`. The user can ch
 - If **all** team players are dead (or in the respawn timer) at the same time, the team is **eliminated** at once.
 - A team with 1 player is eliminated when this player dies.
 - Disconnected players count as dead for this rule. **[DEFAULT]**
+- During the preparation (7.2 step 2), a team is not eliminated. A dead player gets the respawn timer. At the end of the preparation, all players in the respawn timer respawn at once at the team spawn.
+- A player who rejoins during the preparation goes to the team spawn at once (no respawn timer). **[DEFAULT]**
 
 ### 7.6 Finished and eliminated teams
 - A finished team stays in its arena in survival mode until the end.
@@ -131,7 +135,7 @@ Progress of a team = (highest cleared wave, then number of killed mobs in the cu
 4. If both teams finish all 3 waves: **sudden death**.
 
 ### 8.1 Sudden death (`SUDDEN_DEATH`)
-- The arenas are not repaired. All players are alive and at the team spawn. Countdown as normal.
+- The arenas are not repaired. All players are alive and at the team spawn. There is no preparation (`arenaPrepSeconds` does not apply). Countdown as normal.
 - Each team gets all mobs of its 3 waves again (the waves from the enemy team), all at once.
 - No cooldown. The wave max time applies (config `suddenDeathMaxTimeSeconds`, default 600).
 - The first team that kills all mobs wins. If a team is eliminated, the other team wins.
@@ -169,6 +173,7 @@ Root: `/mobarena`, alias `/ma`.
 |---|---|---|---|
 | `prepTimeSeconds` | int | 2700 | 60–14400 |
 | `waveConfigTimeSeconds` | int | 180 | 10–1800 |
+| `arenaPrepSeconds` | int | 30 | 0–300 |
 | `waveCountdownSeconds` | int | 10 | 3–60 |
 | `waveCooldownSeconds` | int | 20 | 1–300 |
 | `waveMaxTimeSeconds` | int | 900 | 60–3600 |

@@ -58,7 +58,7 @@ public final class ArenaBattle {
     public boolean glowing() { return glow; }
     /** Why the battle ended in ELIMINATED; empty while it runs or after it finished. */
     public Optional<EliminationReason> eliminationReason() { return Optional.ofNullable(eliminationReason); }
-    /** True while mobs and deaths still matter (countdown, fight, cooldown). */
+    /** True while mobs and deaths still matter (prep, countdown, fight, cooldown). */
     public boolean running() {
         var state = flow.state();
         return !stopped && state != BattleFlow.State.WAITING_ARENA && state != BattleFlow.State.FINISHED
@@ -89,11 +89,13 @@ public final class ArenaBattle {
         if (ready && currentTag != null) WaveMobAi.dropWaveTargets(this);
         if (ready && currentTag != null && now % 20 == 0) WaveMobAi.retarget(this);
         if (ready && now % 5 == 0) ArenaBounds.check(this);
+        boolean wasPrep = flow.state() == BattleFlow.State.PREP;
         boolean wasWaiting = flow.state() == BattleFlow.State.WAITING_ARENA;
         var input = new TickInput(ready, spawningDone, Math.max(0, alive), kills,
                 group.allDown(this), group.anyOnline(team));
         var events = flow.tick(input);
         if (wasWaiting && flow.state() != BattleFlow.State.WAITING_ARENA) onReady();
+        if (wasPrep && flow.state() == BattleFlow.State.COUNTDOWN) onPrepEnd();
         for (var event : events) handle(event, now);
         if (now % 20 == 0) hud();
     }
@@ -102,6 +104,16 @@ public final class ArenaBattle {
         group.respawns().cancelTeam(team);
         for (ServerPlayer player : group.onlinePlayers(team)) placeAtSpawn(player);
     }
+
+    private void onPrepEnd() {
+        for (var player : group.onlinePlayers(team)) {
+            if (group.respawns().isDown(player.getUUID())) placeAtSpawn(player);
+        }
+        group.respawns().cancelTeam(team);
+    }
+
+    public int prepLeftTicks() { return flow.prepLeftTicks(); }
+    public void setPrepLeft(int ticks) { flow.setPrepLeft(ticks); }
 
     void placeAtSpawn(ServerPlayer player) {
         Vec3 spawn = Vec3.atBottomCenterOf(arena.layout().teamSpawn());
@@ -120,6 +132,10 @@ public final class ArenaBattle {
 
     private void handle(BattleEvent event, long now) {
         switch (event) {
+            case BattleEvent.Prep p -> {
+                title(Component.literal("Get ready"), Component.literal("Wave 1 in " + p.secondsLeft() + " s"), 0, 40, 10);
+                hud();
+            }
             case BattleEvent.Countdown c -> {
                 if (c.secondsLeft() > 0) sound(GameSound.COUNTDOWN);
                 title(Component.literal(String.valueOf(c.secondsLeft())), Component.literal(waveName(c.wave())), 0, 25, 5);
@@ -231,6 +247,8 @@ public final class ArenaBattle {
         long now = group.ctx().server().getTickCount();
         HudLine line = switch (state) {
             case WAITING_ARENA -> new HudLine(Component.literal("Arena – waiting for the arena"), 1, color);
+            case PREP -> new HudLine(Component.literal("Get ready – " + TimeFormat.mmss(flow.prepLeftTicks())),
+                    (float) flow.prepLeftTicks() / script.prepTicks(), color);
             case COUNTDOWN -> new HudLine(Component.literal(waveText + " – get ready"), 1, color);
             case FIGHT -> {
                 long left = Math.max(0, script.maxWaveTicks() - (now - fightStart));

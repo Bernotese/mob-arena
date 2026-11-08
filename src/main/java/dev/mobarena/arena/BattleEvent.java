@@ -4,6 +4,7 @@ import dev.mobarena.core.TeamProgress;
 import dev.mobarena.core.EliminationReason;
 
 public sealed interface BattleEvent {
+    record Prep(int secondsLeft) implements BattleEvent {}
     record Countdown(int wave, int secondsLeft) implements BattleEvent {}
     record SpawnWave(int wave) implements BattleEvent {}
     record Glow(int wave) implements BattleEvent {}
