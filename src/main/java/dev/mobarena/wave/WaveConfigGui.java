@@ -65,7 +65,7 @@ public final class WaveConfigGui extends SimpleGui {
         Item[] tabs={Items.BANNER.white(),Items.BANNER.yellow(),Items.BANNER.red()};
         for(int w=1;w<=3;w++) {
             int target=w;
-            var tab=text(tabs[w-1],"Wave "+w).setName(Component.literal("Wave "+w).withStyle(color()))
+            var tab=text(tabs[w-1],"Wave "+w).setName(Component.literal((w==selected?"▶ ":"")+"Wave "+w).withStyle(color()))
                     .addLoreLine(Component.literal(hub.setup.waveTotal(w)+" mobs, "+hub.setup.wave(w).size()+" types"));
             if(w==selected)tab.glow();
             setSlot(28+w,tab.setCallback((index,click,input,gui)->{

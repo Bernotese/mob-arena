@@ -30,6 +30,35 @@ public class BackpackGuardGameTest {
     }
 
     @GameTest
+    public void cancelledDropKeyResendsBackpackToClient(GameTestHelper helper) {
+        var packets = new ArrayList<net.minecraft.network.protocol.Packet<?>>();
+        ServerPlayer player = TestPlayers.recording(helper, null, packets);
+        try {
+            player.hasChangedDimension();
+            player.connection.handleAcceptPlayerLoad(new net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket());
+            player.setGameMode(GameType.SURVIVAL);
+            player.getInventory().setSelectedSlot(0);
+            ItemStack backpack = BackpackItem.create();
+            player.getInventory().setItem(0, backpack);
+            int slot = player.inventoryMenu.findSlot(player.getInventory(), 0).orElseThrow();
+            for (var action : List.of(
+                    net.minecraft.network.protocol.game.ServerboundPlayerActionPacket.Action.DROP_ITEM,
+                    net.minecraft.network.protocol.game.ServerboundPlayerActionPacket.Action.DROP_ALL_ITEMS)) {
+                packets.clear();
+                player.connection.handlePlayerAction(new net.minecraft.network.protocol.game.ServerboundPlayerActionPacket(
+                        action, BlockPos.ZERO, Direction.DOWN));
+                helper.assertTrue(player.getInventory().getItem(0) == backpack, "Cancelled Q drop preserves the original backpack");
+                helper.assertTrue(packets.stream().anyMatch(packet -> packet instanceof
+                        net.minecraft.network.protocol.game.ClientboundContainerSetContentPacket content
+                        && content.containerId() == player.inventoryMenu.containerId
+                        && GuardedItems.hasTag(content.items().get(slot), BackpackItem.TAG)),
+                        "Cancelled Q drop resends the backpack slot to the client");
+            }
+            helper.succeed();
+        } finally { cleanup(player); }
+    }
+
+    @GameTest
     public void bundleAndShulkerNestingCannotMoveGuardedItems(GameTestHelper helper) {
         ServerPlayer player = TestPlayers.create(helper);
         try {

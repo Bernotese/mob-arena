@@ -17,7 +17,11 @@ abstract class ServerPlayerMixin {
     @Inject(method = "drop(Z)V", at = @At("HEAD"), cancellable = true)
     private void blockDropKey(boolean all, CallbackInfo ci) {
         ServerPlayer player = (ServerPlayer) (Object) this;
-        if (GuardedItems.isGuarded(player.getInventory().getSelectedItem())) ci.cancel();
+        if (GuardedItems.isGuarded(player.getInventory().getSelectedItem())) {
+            // The client predicts a successful drop. Send even unchanged slots again.
+            player.inventoryMenu.sendAllDataToRemote();
+            ci.cancel();
+        }
     }
 
     @Inject(method = "drop(Lnet/minecraft/world/item/ItemStack;ZLnet/minecraft/util/Prediction;)Lnet/minecraft/world/entity/item/ItemEntity;",

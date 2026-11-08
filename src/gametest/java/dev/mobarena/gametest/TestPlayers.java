@@ -14,14 +14,20 @@ public final class TestPlayers {
     private TestPlayers() {}
     public static ServerPlayer create(GameTestHelper helper) { return create(helper, player -> {}); }
     public static ServerPlayer create(GameTestHelper helper, java.util.function.Consumer<ServerPlayer> beforeJoin) {
-        return create(helper, beforeJoin, null);
+        return create(helper, beforeJoin, null, null);
     }
     /** Test player that also records its chat (system) messages into {@code messages}. */
     public static ServerPlayer recording(GameTestHelper helper, java.util.List<String> messages) {
-        return create(helper, player -> {}, java.util.Objects.requireNonNull(messages));
+        return recording(helper, java.util.Objects.requireNonNull(messages), null);
+    }
+    /** Records packets sent to the embedded client, with optional system messages. */
+    public static ServerPlayer recording(GameTestHelper helper, java.util.List<String> messages,
+                                         java.util.List<net.minecraft.network.protocol.Packet<?>> packets) {
+        return create(helper, player -> {}, messages, packets);
     }
     private static ServerPlayer create(GameTestHelper helper, java.util.function.Consumer<ServerPlayer> beforeJoin,
-                                       java.util.List<String> messages) {
+                                       java.util.List<String> messages,
+                                       java.util.List<net.minecraft.network.protocol.Packet<?>> packets) {
         UUID id = UUID.randomUUID();
         GameProfile profile = new GameProfile(id, "test_" + id.toString().substring(0, 8));
         var cookie = CommonListenerCookie.createInitial(profile, false);
@@ -34,7 +40,14 @@ public final class TestPlayers {
                     }
                 };
         beforeJoin.accept(player);
-        Connection connection = new Connection(PacketFlow.SERVERBOUND);
+        Connection connection = packets == null ? new Connection(PacketFlow.SERVERBOUND)
+                : new Connection(PacketFlow.SERVERBOUND) {
+                    @Override public void send(net.minecraft.network.protocol.Packet<?> packet,
+                                               io.netty.channel.ChannelFutureListener listener, boolean flush) {
+                        packets.add(packet);
+                        super.send(packet, listener, flush);
+                    }
+                };
         new EmbeddedChannel(connection);
         server.getPlayerList().placeNewPlayer(connection, player, cookie);
         return player;
