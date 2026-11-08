@@ -14,15 +14,17 @@ public final class TestPlayers {
     private TestPlayers() {}
     public static ServerPlayer create(GameTestHelper helper) { return create(helper, player -> {}); }
     public static ServerPlayer create(GameTestHelper helper, java.util.function.Consumer<ServerPlayer> beforeJoin) {
-        return create(helper, beforeJoin, null);
+        return create(helper, UUID.randomUUID(), beforeJoin, null);
     }
     /** Test player that also records its chat (system) messages into {@code messages}. */
     public static ServerPlayer recording(GameTestHelper helper, java.util.List<String> messages) {
-        return create(helper, player -> {}, java.util.Objects.requireNonNull(messages));
+        return create(helper, UUID.randomUUID(), player -> {}, java.util.Objects.requireNonNull(messages));
     }
-    private static ServerPlayer create(GameTestHelper helper, java.util.function.Consumer<ServerPlayer> beforeJoin,
+    public static ServerPlayer create(GameTestHelper helper, UUID id, java.util.function.Consumer<ServerPlayer> beforeJoin) {
+        return create(helper, id, beforeJoin, null);
+    }
+    private static ServerPlayer create(GameTestHelper helper, UUID id, java.util.function.Consumer<ServerPlayer> beforeJoin,
                                        java.util.List<String> messages) {
-        UUID id = UUID.randomUUID();
         GameProfile profile = new GameProfile(id, "test_" + id.toString().substring(0, 8));
         var cookie = CommonListenerCookie.createInitial(profile, false);
         var server = helper.getLevel().getServer();
