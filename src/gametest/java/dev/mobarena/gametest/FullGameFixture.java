@@ -71,8 +71,10 @@ final class FullGameFixture implements AutoCloseable {
     void deathScreen(ServerPlayer player) {
         acceptLoad(player);
         var source = player.damageSources().fellOutOfWorld();
-        player.hurtServer(player.level(), source, Float.MAX_VALUE);
-        if (!player.isDeadOrDying()) { player.setHealth(0); player.die(source); }
+        // Bypass ALLOW_DEATH in arenas; its cancelled death would create a respawn timer.
+        if (game.phase() == Phase.ARENA || game.phase() == Phase.SUDDEN_DEATH) {
+            player.setHealth(0); player.die(source);
+        } else player.hurtServer(player.level(), source, Float.MAX_VALUE);
         h.assertTrue(player.isDeadOrDying(), "Player reaches the death screen");
         player.remove(net.minecraft.world.entity.Entity.RemovalReason.KILLED);
     }
@@ -92,8 +94,10 @@ final class FullGameFixture implements AutoCloseable {
         h.assertTrue(game.phase() == Phase.WAVE_CONFIG && ctx.get(WaveKeys.SETUPS) != null, "Real wave setup starts");
     }
     void arena() {
-        for (var team : TeamId.values()) DebugDriver.poolAdd(team, "cow", 3);
-        if (game.phase() == Phase.PREP) waveConfig();
+        if (game.phase() == Phase.PREP) {
+            for (var team : TeamId.values()) DebugDriver.poolAdd(team, "cow", 3);
+            waveConfig();
+        }
         for (var team : TeamId.values()) DebugDriver.waves(team, "cow:1", "cow:1", "cow:1");
         admin("ma skip");
     }

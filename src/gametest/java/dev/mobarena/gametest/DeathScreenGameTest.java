@@ -18,6 +18,7 @@ public class DeathScreenGameTest {
     @GameTest(environment = "mobarena:death_prep_arena", maxTicks = 600)
     public void prepDeathThenArenaStartIsNotEliminated(GameTestHelper h) {
         var f = new FullGameFixture(h, true, 1);
+        for (var team : TeamId.values()) DebugDriver.poolAdd(team, "cow", 3);
         endDeath(f);
         f.waveConfig();
         lobby(f);

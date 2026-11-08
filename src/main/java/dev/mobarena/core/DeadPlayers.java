@@ -9,6 +9,7 @@ import java.util.List;
 public final class DeadPlayers {
     private DeadPlayers() {}
 
+    /** Does nothing before the player is registered in the PlayerList. */
     public static ServerPlayer revive(ServerPlayer player) {
         if (player.isDeadOrDying() && player.connection != null
                 && player.level().getServer().getPlayerList().getPlayer(player.getUUID()) == player) {
@@ -20,6 +21,22 @@ public final class DeadPlayers {
             }
         }
         return player.connection == null ? player : player.connection.player;
+    }
+
+    /** JOIN runs before PlayerList registration. Reset the fresh entity before join routing. */
+    public static void prepareJoin(ServerPlayer player) {
+        if (!player.isDeadOrDying()) return;
+        player.setHealth(player.getMaxHealth());
+        player.deathTime = 0;
+        player.getFoodData().setFoodLevel(20);
+        player.getFoodData().setSaturation(5);
+        player.clearFire();
+        player.removeAllEffects();
+        player.resetFallDistance();
+        player.setAirSupply(player.getMaxAirSupply());
+        player.setExperiencePoints(0);
+        player.setExperienceLevels(0);
+        player.totalExperience = 0;
     }
 
     public static void reviveTeamPlayers(GameContext ctx) {

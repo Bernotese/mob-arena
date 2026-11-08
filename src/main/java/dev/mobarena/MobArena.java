@@ -31,7 +31,7 @@ public final class MobArena implements ModInitializer {
         // Register the lobby first. Module listeners run after inventory cleanup.
         GameManager.get().register(lobby);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
-                dev.mobarena.core.DeadPlayers.revive(handler.player));
+                dev.mobarena.core.DeadPlayers.prepareJoin(handler.player));
         // Modules: one init line each (PLAN 2.2). They run after the lobby listener.
         dev.mobarena.randomizer.RandomizerModule.init();
         dev.mobarena.world.WorldModule.init(lobby);
