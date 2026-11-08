@@ -51,14 +51,6 @@ public class PolishGameTest {
     public void lobbyPlayersUseSeparateSafeBlocks(GameTestHelper h) {
         var f = new FullGameFixture(h, true);
         f.game.stop();
-        var positions = new HashSet<Vec3>();
-        for (var player : f.players) {
-            h.assertTrue(player.level() == f.server.overworld(), "Player returns to the lobby");
-            h.assertTrue(positions.add(player.position()), "Each player has a separate lobby position");
-            h.assertTrue(player.verticalCollisionBelow, "Lobby position has support");
-            h.assertTrue(player.level().noCollision(player, player.getBoundingBox()), "Lobby position has enough space");
-        }
-        // A changed lobby spawn must use safe blocks and reject holes.
         try {
             var directory = java.nio.file.Files.createTempDirectory("mobarena-spread");
             var path = directory.resolve("lobby.json");
@@ -67,6 +59,16 @@ public class PolishGameTest {
                 catch (java.io.IOException e) { throw new IllegalStateException(e); }
             });
             var lobby = new LobbyManager(path);
+            // A new config builds a known platform, even when a previous run's world was deleted.
+            lobby.prepare(f.server);
+            var positions = new HashSet<Vec3>();
+            for (var player : f.players) {
+                lobby.sendToLobby(player, false);
+                h.assertTrue(player.level() == f.server.overworld(), "Player returns to the lobby");
+                h.assertTrue(positions.add(player.position()), "Each player has a separate lobby position");
+                h.assertTrue(player.verticalCollisionBelow, "Lobby position has support");
+                h.assertTrue(player.level().noCollision(player, player.getBoundingBox()), "Lobby position has enough space");
+            }
             lobby.setSpawn(f.red);
             var hole = f.red.blockPosition().below();
             var old = f.server.overworld().getBlockState(hole);
