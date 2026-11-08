@@ -1,5 +1,6 @@
 package dev.mobarena.arena;
 
+import dev.mobarena.core.EliminationReason;
 import dev.mobarena.core.TeamProgress;
 import java.util.*;
 
@@ -35,7 +36,7 @@ public final class BattleFlow {
         }
         if (state == State.FIGHT) kills = in.killsInWave();
         if (!in.anyOnline() || in.allDown()) {
-            eliminate(events, !in.anyOnline() ? BattleEvent.Reason.NO_PLAYERS : BattleEvent.Reason.ALL_DOWN);
+            eliminate(events, !in.anyOnline() ? EliminationReason.NO_PLAYERS : EliminationReason.ALL_DOWN);
             return List.copyOf(events);
         }
         if (state == State.COOLDOWN && stateTicks >= script.cooldownTicks()) {
@@ -52,7 +53,7 @@ public final class BattleFlow {
             }
         } else if (state == State.FIGHT) {
             if (in.spawningDone() && in.alive() == 0) clear(events);
-            else if (stateTicks >= script.maxWaveTicks()) eliminate(events, BattleEvent.Reason.TIME);
+            else if (stateTicks >= script.maxWaveTicks()) eliminate(events, EliminationReason.TIME);
             else checkGlow(events);
         }
         return List.copyOf(events);
@@ -96,7 +97,7 @@ public final class BattleFlow {
         }
     }
 
-    private void eliminate(List<BattleEvent> events, BattleEvent.Reason reason) {
+    private void eliminate(List<BattleEvent> events, EliminationReason reason) {
         state = State.ELIMINATED;
         events.add(new BattleEvent.Eliminated(progress(), reason));
     }

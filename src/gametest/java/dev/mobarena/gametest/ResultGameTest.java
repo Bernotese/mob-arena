@@ -84,7 +84,7 @@ public class ResultGameTest {
     public void sameTickEventsGiveOneVerdictAtEndServerTick(GameTestHelper helper) {
         var f = new Fixture(helper);
         f.hooks().teamFinished(TeamId.RED, 100);
-        f.hooks().teamEliminated(TeamId.BLUE, progress(0, 0));
+        f.hooks().teamEliminated(TeamId.BLUE, progress(0, 0), EliminationReason.ALL_DOWN);
         helper.assertTrue(f.phase() == Phase.ARENA, "Hooks only record; the resolver runs at END_SERVER_TICK");
         helper.assertTrue(f.tracker().dirty(), "Events are recorded");
         f.at(1, () -> {
@@ -102,6 +102,7 @@ public class ResultGameTest {
             var blue = outcomes.getAsJsonObject("BLUE").getAsJsonObject("arena");
             helper.assertTrue(red.get("type").getAsString().equals("FINISHED") && red.get("ticks").getAsLong() == 100, "State RED outcome: " + red);
             helper.assertTrue(blue.get("type").getAsString().equals("ELIMINATED") && blue.get("clearedWaves").getAsInt() == 0, "State BLUE outcome: " + blue);
+            helper.assertValueEqual(blue.get("reason").getAsString(), "ALL_DOWN", "Arena outcome keeps its reason after END");
             f.hooks().teamFinished(TeamId.BLUE, 300);
             helper.assertTrue(!f.tracker().dirty(), "Events after the verdict are ignored");
             f.close();

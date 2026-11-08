@@ -32,7 +32,7 @@ public final class RespawnRouter {
         var game = GameManager.get();
         var ctx = game.context();
         return result != null && ctx != null && ctx.team(player.getUUID()) != null
-                && GameLevels.isPrepLevel(result.newLevel())
+                && GameLevels.kindOf(result.newLevel()).orElse(null) == WorldKind.PREP_OVERWORLD
                 && GameLevels.teamOf(result.newLevel()).orElse(null) == ctx.team(player.getUUID());
     }
 }

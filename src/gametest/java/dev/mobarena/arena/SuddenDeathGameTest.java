@@ -143,13 +143,26 @@ public class SuddenDeathGameTest {
     @GameTest(environment = "mobarena:arena_sd_down", maxTicks = 800, skyAccess = true)
     public void allDownLosesAtOnce(GameTestHelper h) {
         var f = fixture(h, List.of(Map.of(ZOMBIE, 1), Map.of(), Map.of()), List.of(Map.of(ZOMBIE, 1), Map.of(), Map.of()));
+        var serverMessages = serverMessages(h);
         h.startSequence()
             .thenExecute(() -> equalEliminations(f))
             .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.SUDDEN_DEATH
                     && f.group().battle(TeamId.RED).state() == BattleFlow.State.FIGHT, "Sudden death fight"))
-            .thenExecute(() -> killPlayer(f.red))
+            .thenExecute(() -> {
+                f.chat.values().forEach(List::clear);
+                killPlayer(f.red);
+                String death = f.red.getCombatTracker().getDeathMessage().getString();
+                h.assertTrue(Collections.frequency(serverMessages, death) == 1, "Server logs one sudden death message");
+                for (var messages : f.chat.values())
+                    h.assertTrue(Collections.frequency(messages, death) == 1, "Both teams receive one sudden death message: " + messages);
+            })
             .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.END, "Game ends"))
-            .thenExecute(() -> h.assertValueEqual(result(f), "BLUE / Sudden death: Other team eliminated", "Result"))
+            .thenExecute(() -> {
+                h.assertValueEqual(result(f), "BLUE / Sudden death: Other team eliminated", "Result");
+                var state = dev.mobarena.debug.DebugDriver.state(f.ctx.server());
+                var outcome = state.getAsJsonObject("outcomes").getAsJsonObject("RED").getAsJsonObject("suddenDeath");
+                h.assertValueEqual(outcome.get("reason").getAsString(), "ALL_DOWN", "Sudden death outcome keeps its reason after END");
+            })
             .thenSucceed();
     }
 
@@ -176,7 +189,14 @@ public class SuddenDeathGameTest {
             .thenWaitUntil(() -> h.assertTrue(mobs(f.arena(TeamId.RED), SD_RED).size() == 2, "RED mobs spawn"))
             .thenExecute(() -> mobs(f.arena(TeamId.RED), SD_RED).stream().limit(redKills).forEach(m -> kill(m, f.red)))
             .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.END, "Game ends at the time-out"))
-            .thenExecute(() -> h.assertValueEqual(result(f), expected, "Result"))
+            .thenExecute(() -> {
+                h.assertValueEqual(result(f), expected, "Result");
+                var state = dev.mobarena.debug.DebugDriver.state(f.ctx.server());
+                for (var team : TeamId.values()) {
+                    var outcome = state.getAsJsonObject("outcomes").getAsJsonObject(team.name()).getAsJsonObject("suddenDeath");
+                    h.assertValueEqual(outcome.get("reason").getAsString(), "TIME", "Time-out outcome keeps its reason after END");
+                }
+            })
             .thenSucceed();
     }
 

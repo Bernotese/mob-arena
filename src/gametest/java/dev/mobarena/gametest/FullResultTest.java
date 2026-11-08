@@ -1,5 +1,6 @@
 package dev.mobarena.gametest;
 
+import dev.mobarena.core.EliminationReason;
 import dev.mobarena.arena.ArenaBattle;
 import dev.mobarena.arena.ArenaBattles;
 import dev.mobarena.arena.BattleEvent;
@@ -63,7 +64,7 @@ public class FullResultTest {
                     var blue = (Outcome.Eliminated) tracker(f).arenaOutcome(TeamId.BLUE);
                     h.assertTrue(blue.progress().clearedWaves() == 1 && blue.progress().killsInCurrentWave() == 0,
                             "BLUE progress: one wave cleared, " + blue.progress());
-                    h.assertTrue(f.battle(TeamId.BLUE).eliminationReason().orElseThrow() == BattleEvent.Reason.ALL_DOWN, "BLUE reason ALL_DOWN");
+                    h.assertTrue(f.battle(TeamId.BLUE).eliminationReason().orElseThrow() == EliminationReason.ALL_DOWN, "BLUE reason ALL_DOWN");
                 }))
                 .thenWaitUntil(() -> waveUp(h, f, TeamId.RED, 3, 1))
                 .thenExecute(f.check(() -> f.admin("ma debug clearwave red")))
@@ -124,7 +125,7 @@ public class FullResultTest {
                 .thenExecute(f.check(() -> f.admin("ma debug clearwave red")))
                 .thenWaitUntil(() -> waveUp(h, f, TeamId.RED, 2, 2))
                 .thenExecute(f.check(() -> {
-                    h.assertTrue(f.battle(TeamId.BLUE).eliminationReason().orElseThrow() == BattleEvent.Reason.ALL_DOWN, "BLUE is down");
+                    h.assertTrue(f.battle(TeamId.BLUE).eliminationReason().orElseThrow() == EliminationReason.ALL_DOWN, "BLUE is down");
                     var blueState = DebugDriver.state(f.server).getAsJsonObject("battles").getAsJsonObject("BLUE");
                     h.assertTrue(blueState.get("reason").getAsString().equals("ALL_DOWN"), "State reason: " + blueState);
                     var cow = f.battle(TeamId.RED).waveMobs().getFirst();
@@ -133,7 +134,7 @@ public class FullResultTest {
                 .thenWaitUntil(() -> h.assertTrue(red[0].kills() == 1, "One kill in wave 2"))
                 .thenWaitUntil(() -> h.assertTrue(red[0].state() == BattleFlow.State.ELIMINATED, "Wave max time ends RED"))
                 .thenExecute(f.check(() -> {
-                    h.assertTrue(red[0].eliminationReason().orElseThrow() == BattleEvent.Reason.TIME, "RED reason TIME");
+                    h.assertTrue(red[0].eliminationReason().orElseThrow() == EliminationReason.TIME, "RED reason TIME");
                     var outcome = (Outcome.Eliminated) tracker(f).arenaOutcome(TeamId.RED);
                     h.assertTrue(outcome.progress().clearedWaves() == 1 && outcome.progress().killsInCurrentWave() == 1,
                             "RED progress: 1 wave cleared, 1 kill in wave 2: " + outcome.progress());
@@ -230,7 +231,7 @@ public class FullResultTest {
                 .thenWaitUntil(() -> h.assertTrue(sd[0].kills() == 1 && sd[1].kills() == 1, "One kill per team"))
                 .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.END, "Both teams time out"))
                 .thenExecute(f.check(() -> {
-                    for (var battle : sd) h.assertTrue(battle.eliminationReason().orElseThrow() == BattleEvent.Reason.TIME, battle.team() + " reason TIME");
+                    for (var battle : sd) h.assertTrue(battle.eliminationReason().orElseThrow() == EliminationReason.TIME, battle.team() + " reason TIME");
                     var result = f.ctx.get(ResultKeys.RESULT);
                     h.assertTrue(result.winner().isEmpty() && result.reason().equals("Sudden death: equal result"), "Draw: " + result);
                     for (var team : TeamId.values()) {
