@@ -28,9 +28,12 @@ public final class TestPlayers {
     public static ServerPlayer create(GameTestHelper helper, UUID id, java.util.function.Consumer<ServerPlayer> beforeJoin) {
         return create(helper, id, beforeJoin, null, null);
     }
+    public static ServerPlayer recordingPackets(GameTestHelper helper, java.util.List<Object> packets) {
+        return create(helper, UUID.randomUUID(), player -> {}, null, packets);
+    }
     private static ServerPlayer create(GameTestHelper helper, UUID id, java.util.function.Consumer<ServerPlayer> beforeJoin,
                                        java.util.List<String> messages,
-                                       java.util.List<net.minecraft.network.protocol.Packet<?>> packets) {
+                                       java.util.List<? super net.minecraft.network.protocol.Packet<?>> packets) {
         GameProfile profile = new GameProfile(id, "test_" + id.toString().substring(0, 8));
         var cookie = CommonListenerCookie.createInitial(profile, false);
         var server = helper.getLevel().getServer();

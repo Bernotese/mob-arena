@@ -30,6 +30,7 @@ import net.minecraft.world.item.component.Fireworks;
  * END timer ({@code endScreenSeconds}) ends. T2 clears inventories in {@code LOBBY.onEnter}.
  */
 final class EndSequence implements PhaseListener {
+    static final int RESULT_TITLE_DELAY_TICKS = 40;
     /** Fireworks every second for the first 5 s. */
     static final int FIREWORK_INTERVAL = 20, FIREWORK_TICKS = 100;
     private static final ResultKeys.GameResult NO_RESULT = new ResultKeys.GameResult(Optional.empty(), "Ended by an admin");
@@ -40,14 +41,13 @@ final class EndSequence implements PhaseListener {
         // Boss bar and title use the same text ("Game over" after an admin skip, not "Draw").
         if (result == NO_RESULT) HudOverrides.of(ctx).setResultText(Component.literal("Game over"));
         else HudOverrides.of(ctx).setResult(result.winner().orElse(null));
-        var players = ctx.server().getPlayerList().getPlayers();
-        Titles.showAll(List.copyOf(players), title(result), Component.literal(result.reason()), 10, 70, 20);
         for (Component line : summary(ctx, result)) ctx.server().getPlayerList().broadcastSystemMessage(line, false);
     }
 
     @Override public void onTick(Phase phase, GameContext ctx) {
         if (phase != Phase.END) return;
         long elapsed = ctx.timer().elapsedTicks();
+        if (elapsed == RESULT_TITLE_DELAY_TICKS) announce(ctx, result(ctx));
         if (elapsed > FIREWORK_TICKS || (elapsed - 1) % FIREWORK_INTERVAL != 0) return;
         result(ctx).winner().ifPresent(team -> {
             for (Map.Entry<UUID, TeamId> entry : ctx.teams().entrySet()) {
@@ -56,6 +56,11 @@ final class EndSequence implements PhaseListener {
                 if (player != null && !player.isRemoved()) launchFirework(player, team);
             }
         });
+    }
+
+    private static void announce(GameContext ctx, ResultKeys.GameResult result) {
+        Titles.showAll(List.copyOf(ctx.server().getPlayerList().getPlayers()),
+                title(result), Component.literal(result.reason()), 10, 70, 20);
     }
 
     static ResultKeys.GameResult result(GameContext ctx) {

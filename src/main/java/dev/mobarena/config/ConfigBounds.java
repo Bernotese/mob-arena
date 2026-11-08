@@ -24,5 +24,9 @@ public final class ConfigBounds {
         if (bounds == null) throw new IllegalArgumentException("No ConfigBounds entry for integer key: " + key);
         return bounds;
     }
-    public static Bounds bounds(String key) { return VALUES.get(key); }
+    public static Bounds bounds(String key) {
+        Bounds bounds = VALUES.get(key);
+        if ("waveMaxTimeSeconds".equals(key) && Boolean.getBoolean("mobarena.debug")) return new Bounds(1, bounds.max());
+        return bounds;
+    }
 }
