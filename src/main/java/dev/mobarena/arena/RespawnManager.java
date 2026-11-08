@@ -52,7 +52,12 @@ final class RespawnManager {
         player.setGameMode(GameType.SPECTATOR);
         if (!diedHere || player.level() != battle.arena().get().level()) {
             var spawn = net.minecraft.world.phys.Vec3.atBottomCenterOf(battle.arena().get().layout().teamSpawn());
-            player.teleportTo(battle.arena().get().level(), spawn.x, spawn.y + 2, spawn.z, Set.of(), player.getYRot(), 0, true);
+            var level = battle.arena().get().level();
+            var box = player.getBoundingBox().move(spawn.subtract(player.position()));
+            var feet = new net.minecraft.world.phys.AABB(box.minX, box.minY - 1.0E-6, box.minZ,
+                    box.maxX, box.minY, box.maxZ);
+            boolean safe = level.findSupportingBlock(player, feet).isPresent() && level.noCollision(player, box);
+            player.teleportTo(level, spawn.x, spawn.y + (safe ? 0 : 2), spawn.z, Set.of(), player.getYRot(), 0, true);
             dev.mobarena.core.Teleports.clearSupport(player);
         }
         timers.put(player.getUUID(), group.ctx().server().getTickCount() + respawnTicks);
