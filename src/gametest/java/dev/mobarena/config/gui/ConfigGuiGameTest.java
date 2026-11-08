@@ -40,6 +40,10 @@ public class ConfigGuiGameTest {
                     .lines().stream().anyMatch(line->line.getString().equals("Value: 2760")),"Second admin sees the new value");
             click(first,0,ClickType.MOUSE_RIGHT_SHIFT);
             h.assertTrue(store.current().prepTimeSeconds==2160,"Shift right decreases ten steps");
+            click(first,13,ClickType.MOUSE_LEFT);
+            h.assertTrue(store.current().arenaPrepSeconds == 35, "Slot 13 increases arena prep by five seconds");
+            h.assertTrue(first.getGuiElement(13).getItemStack().is(net.minecraft.world.item.Items.CLOCK), "Prep uses a clock");
+            h.assertTrue(store.current().randomizerEnabled, "Prep slot does not change randomizer");
             click(first,10,ClickType.MOUSE_LEFT);
             h.assertTrue(!store.current().randomizerEnabled,"Boolean toggles");
             click(first,22,ClickType.MOUSE_LEFT);

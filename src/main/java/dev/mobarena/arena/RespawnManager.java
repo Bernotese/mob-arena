@@ -20,6 +20,7 @@ final class RespawnManager {
     boolean isDown(UUID id) { return timers.isDown(id); }
     Set<UUID> down() { return timers.down(); }
     void clear() { timers.clear(); }
+    void cancel(UUID id) { timers.cancel(id); }
     void cancelTeam(dev.mobarena.team.TeamId team) {
         for (UUID id : timers.down()) if (group.ctx().team(id) == team) timers.cancel(id);
     }
