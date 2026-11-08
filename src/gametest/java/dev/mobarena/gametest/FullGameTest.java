@@ -245,6 +245,83 @@ public class FullGameTest {
         } catch (RuntimeException | Error e) { f.close(); throw e; }
     }
 
+    @GameTest(environment = "mobarena:prep_anchor_respawn", maxTicks = 500)
+    public void chargedNetherAnchorDeathRespawnsAtPrepSpawn(GameTestHelper h) {
+        var f = new FullGameFixture(h, true, 1);
+        try {
+            for (var player : f.teamPlayers()) {
+                var world = f.ctx.get(TeamWorlds.KEY).get(f.ctx.team(player.getUUID()));
+                var nether = world.nether().asLevel();
+                var anchor = new net.minecraft.core.BlockPos(0, 100, 0);
+                for (int x = -3; x <= 3; x++) for (int z = -3; z <= 3; z++) {
+                    nether.setBlockAndUpdate(anchor.offset(x, -1, z), Blocks.STONE.defaultBlockState());
+                    for (int y = 0; y <= 2; y++)
+                        nether.setBlockAndUpdate(anchor.offset(x, y, z), Blocks.AIR.defaultBlockState());
+                }
+                nether.setBlockAndUpdate(anchor, Blocks.RESPAWN_ANCHOR.defaultBlockState()
+                        .setValue(net.minecraft.world.level.block.RespawnAnchorBlock.CHARGE, 1));
+                player.teleport(new net.minecraft.world.level.portal.TeleportTransition(
+                        nether, Vec3.atBottomCenterOf(anchor.east(2)), Vec3.ZERO, 0, 0,
+                        net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING));
+                FullGameFixture.acceptLoad(player);
+                player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+                player.setItemInHand(net.minecraft.world.InteractionHand.OFF_HAND, ItemStack.EMPTY);
+                player.gameMode.useItemOn(player, nether, ItemStack.EMPTY, net.minecraft.world.InteractionHand.MAIN_HAND,
+                        new BlockHitResult(Vec3.atCenterOf(anchor), net.minecraft.core.Direction.UP, anchor, false));
+                var config = player.getRespawnConfig();
+                h.assertTrue(config != null && !config.forced()
+                        && config.respawnData().dimension().equals(nether.dimension())
+                        && config.respawnData().pos().equals(anchor), "Anchor use sets a real Nether respawn point");
+                h.assertTrue(net.minecraft.world.level.block.RespawnAnchorBlock.findStandUpPosition(
+                        EntityTypes.PLAYER, nether, anchor).isPresent(), "Charged anchor has a safe respawn position");
+                f.down(player);
+                h.assertTrue(player.isDeadOrDying(), "Player dies in the team Nether during PREP");
+                player.connection.handleClientCommand(new net.minecraft.network.protocol.game.ServerboundClientCommandPacket(
+                        net.minecraft.network.protocol.game.ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
+                var respawned = player.connection.player;
+                h.assertTrue(respawned.isAlive() && respawned.level() == world.overworld().asLevel(),
+                        "Charged Nether anchor cannot keep a PREP respawn in the Nether");
+                h.assertTrue(respawned.position().distanceTo(Vec3.atBottomCenterOf(world.prepSpawn())) < 1,
+                        "Charged anchor death returns to the team prep spawn");
+                h.assertValueEqual(nether.getBlockState(anchor).getValue(
+                        net.minecraft.world.level.block.RespawnAnchorBlock.CHARGE), 0,
+                        "Vanilla consumes the anchor charge before routing overrides its destination");
+            }
+            f.state(Phase.PREP);
+            f.close();
+            h.succeed();
+        } catch (RuntimeException | Error e) { f.close(); throw e; }
+    }
+
+    @GameTest(environment = "mobarena:prep_respawn_phase", maxTicks = 500)
+    public void teamOverworldRespawnIsAcceptedOnlyDuringPrep(GameTestHelper h) {
+        var f = new FullGameFixture(h, true, 1);
+        try {
+            var world = f.ctx.get(TeamWorlds.KEY).get(TeamId.RED);
+            var position = world.prepSpawn().above(10);
+            world.overworld().asLevel().setBlockAndUpdate(position.below(), Blocks.STONE.defaultBlockState());
+            world.overworld().asLevel().setBlockAndUpdate(position, Blocks.AIR.defaultBlockState());
+            world.overworld().asLevel().setBlockAndUpdate(position.above(), Blocks.AIR.defaultBlockState());
+            var vanilla = new net.minecraft.world.level.portal.TeleportTransition(world.overworld().asLevel(),
+                    Vec3.atBottomCenterOf(position), Vec3.ZERO, 0, 0,
+                    net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING);
+            h.assertTrue(dev.mobarena.world.RespawnRouter.accepts(f.red, vanilla), "PREP accepts the team overworld");
+            f.red.setRespawnPosition(new ServerPlayer.RespawnConfig(
+                    net.minecraft.world.level.storage.LevelData.RespawnData.of(
+                            world.overworld().asLevel().dimension(), position, 0, 0), true), false);
+            f.waveConfig();
+            h.assertFalse(dev.mobarena.world.RespawnRouter.accepts(f.red, vanilla),
+                    "Other phases allow their respawn hooks to override a team overworld destination");
+            h.assertTrue(dev.mobarena.world.RespawnRouter.route(f.red).isEmpty(), "WAVE_CONFIG has no respawn override");
+            var result = f.red.findRespawnPositionAndUseSpawnBlock(false,
+                    net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING);
+            h.assertTrue(result.newLevel() == vanilla.newLevel() && result.position().distanceTo(vanilla.position()) < 1,
+                    "A phase without a hook preserves the vanilla destination");
+            f.close();
+            h.succeed();
+        } catch (RuntimeException | Error e) { f.close(); throw e; }
+    }
+
     private static boolean hasBackpack(ServerPlayer p) {
         for (int i = 0; i < p.getInventory().getContainerSize(); i++)
             if (GuardedItems.hasTag(p.getInventory().getItem(i), BackpackItem.TAG)) return true;
