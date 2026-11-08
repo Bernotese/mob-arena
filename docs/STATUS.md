@@ -1,7 +1,13 @@
-# Status (2026-11-08, after T13)
+# Status (2026-11-08, after T14)
 
-## Version 1 plus real-client fixes (T12, T13) on main
-All tasks T0–T13 are merged. `main` build: 112 unit tests, 155 GameTests. CI on GitHub runs the same build.
+## Version 1 plus real-client fixes (T12–T14) on main
+All tasks T0–T14 are merged. `main` build: 112 unit tests, 157 GameTests.
+
+T14 (third real-client test, docs/findings/2026-11-08-run3-tasks.md, plan docs/plans/T14.md):
+- All T13 items and the T12 recheck passed in the real client.
+- "standing on air" closed: the diagnostics show combat knockback (client lands before the server simulation). Vanilla behavior. The debug-only diagnostic stays.
+- A player who rejoins during arena prep gets a free supported spot near the team spawn (not inside a mate).
+- Lobby spread: 2 blocks between players on the normal platform; small custom lobbies fall back to 1-block rings before the center. CI on GitHub runs the same build.
 
 T13 (second real-client test, docs/findings/2026-11-08-rerun-tasks.md, plan docs/plans/T13.md):
 - New arena prep phase: teams get arenaPrepSeconds (default 30) in their arena before the wave 1 countdown. No elimination in prep.
@@ -20,9 +26,9 @@ T12 (from the real-client test, docs/findings/2026-11-08-real-client.md, plan do
 - Sounds (vanilla, Master source): countdown, Go, wave clear, finish, elimination, sudden death, win/lose/draw.
 
 ## Open
-- User: third real-client test (VM). Check: rejoin in ARENA after a PREP disconnect (one entity, lobby after the game), arena prep phase (30 s, "Get ready", first "3" heard), wave tab icon. Run with -Dmobarena.debug=true and send the MOBARENA_STANDING_ON_AIR lines.
-- Not tested yet: backpack into a chest, S15 load.
-- Possible later: T11 features (mob variants, stats screen).
+- User: optional real-client check of T14 (rejoin during arena prep next to a mate, lobby spread 2 blocks).
+- Not tested yet: backpack into a chest, S15 load (300 zombies).
+- Possible later: T11 features (mob variants, stats screen); shared free-spot helper for lobby and arena rejoin.
 
 ## Rules and defaults
 - Ender Dragon in each team End spawns but does not count (default).
