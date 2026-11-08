@@ -1,5 +1,6 @@
 package dev.mobarena.arena;
 
+import dev.mobarena.core.EliminationReason;
 import dev.mobarena.hud.HudLine;
 import dev.mobarena.hud.HudOverrides;
 import dev.mobarena.hud.TimeFormat;
@@ -17,7 +18,7 @@ import java.util.function.Supplier;
 
 /** One team's arena run: BattleFlow timing plus the Minecraft side effects. Server thread only. */
 public final class ArenaBattle {
-    private BattleEvent.Reason eliminationReason;
+    private EliminationReason eliminationReason;
     final ArenaBattles group;
     final TeamId team;
     private final Supplier<Optional<Arena>> arenaSource;
@@ -54,7 +55,7 @@ public final class ArenaBattle {
     public int kills() { return kills; }
     public boolean glowing() { return glow; }
     /** Why the battle ended in ELIMINATED; empty while it runs or after it finished. */
-    public Optional<BattleEvent.Reason> eliminationReason() { return Optional.ofNullable(eliminationReason); }
+    public Optional<EliminationReason> eliminationReason() { return Optional.ofNullable(eliminationReason); }
     /** True while mobs and deaths still matter (countdown, fight, cooldown). */
     public boolean running() {
         var state = flow.state();
@@ -139,7 +140,7 @@ public final class ArenaBattle {
                 currentTag = null;
                 title(Component.literal("Eliminated"), Component.literal(reasonText(e.reason())), 5, 60, 10);
                 group.onEliminated(this);
-                listener.eliminated(team, e.progress());
+                listener.eliminated(team, e.progress(), e.reason());
             }
         }
     }
@@ -240,7 +241,7 @@ public final class ArenaBattle {
         if (wave >= script.waves().size()) return Component.empty();
         return Component.literal("Next wave in " + (script.cooldownTicks() + script.countdownTicks() + 19) / 20 + " s");
     }
-    private static String reasonText(BattleEvent.Reason reason) {
+    private static String reasonText(EliminationReason reason) {
         return switch (reason) {
             case TIME -> "Time is up";
             case ALL_DOWN -> "All players are down";

@@ -113,6 +113,7 @@ public final class DebugDriver {
             case Outcome.Finished finished -> { json.addProperty("type", "FINISHED"); json.addProperty("ticks", finished.ticks()); }
             case Outcome.Eliminated eliminated -> {
                 json.addProperty("type", "ELIMINATED");
+                json.add("reason", eliminated.reason() == null ? JsonNull.INSTANCE : new JsonPrimitive(eliminated.reason().name()));
                 json.addProperty("clearedWaves", eliminated.progress().clearedWaves());
                 json.addProperty("killsInCurrentWave", eliminated.progress().killsInCurrentWave());
                 json.addProperty("ticks", eliminated.progress().ticks());

@@ -25,6 +25,23 @@ public class ArenaGameTest {
     private static final String ZOMBIE = "minecraft:zombie";
     private static final int LONG = 20 * 600;
 
+    /** Capture the server logger until this test ends. */
+    static List<String> serverMessages(GameTestHelper h) {
+        List<String> messages = Collections.synchronizedList(new ArrayList<>());
+        var logger = (org.apache.logging.log4j.core.Logger) org.apache.logging.log4j.LogManager.getRootLogger();
+        var appender = new org.apache.logging.log4j.core.appender.AbstractAppender(
+                "death-test-" + UUID.randomUUID(), null, null, true, org.apache.logging.log4j.core.config.Property.EMPTY_ARRAY) {
+            @Override public void append(org.apache.logging.log4j.core.LogEvent event) {
+                String message = event.getMessage().getFormattedMessage();
+                if (message.startsWith("System chat: ")) messages.add(message.substring("System chat: ".length()));
+            }
+        };
+        appender.start();
+        logger.addAppender(appender);
+        dev.mobarena.gametest.TestEnd.run(h, () -> { logger.removeAppender(appender); appender.stop(); });
+        return messages;
+    }
+
     static void kill(LivingEntity mob, ServerPlayer by) {
         mob.hurtServer((net.minecraft.server.level.ServerLevel) mob.level(), mob.damageSources().playerAttack(by), Float.MAX_VALUE);
     }
@@ -80,10 +97,19 @@ public class ArenaGameTest {
     @GameTest(environment = "mobarena:arena_down", maxTicks = 400, skyAccess = true)
     public void allPlayersDownEliminatesOnce(GameTestHelper h) {
         var f = new ArenaFixture(h, false, true);
+        var serverMessages = serverMessages(h);
+        var lobbyMessages = new ArrayList<String>();
+        var lobby = dev.mobarena.gametest.TestPlayers.recording(h, lobbyMessages);
+        dev.mobarena.gametest.TestEnd.run(h, () -> f.ctx.server().getPlayerList().remove(lobby));
         h.startSequence()
             .thenWaitUntil(() -> h.assertTrue(f.red.level() == f.arena(TeamId.RED).level(), "RED player is in the arena"))
             .thenExecute(() -> {
+                f.chat.values().forEach(List::clear);
+                lobbyMessages.clear();
                 killPlayer(f.red);
+                String death = f.red.getCombatTracker().getDeathMessage().getString();
+                for (var messages : List.of(f.chat.get(f.red.getUUID()), f.chat.get(f.blue.getUUID()), lobbyMessages, serverMessages))
+                    h.assertTrue(Collections.frequency(messages, death) == 1, "Every online player receives one death message: " + messages);
                 h.assertTrue(f.red.isAlive() && f.red.isSpectator(), "Arena death makes a spectator, not a vanilla death");
             })
             .thenWaitUntil(() -> h.assertTrue(f.results.contains("eliminated RED 0 0"), "RED is eliminated"))
@@ -100,6 +126,7 @@ public class ArenaGameTest {
     public void secondPlayerKeepsTeamAliveAndRespawns(GameTestHelper h) {
         var f = new ArenaFixture(h, true, true);
         f.group().setRespawnTicks(40);
+        var serverMessages = serverMessages(h);
         var battle = f.run(TeamId.RED, 20, 20, LONG, LONG, Map.of(ZOMBIE, 1), Map.of(), Map.of());
         h.startSequence()
             .thenWaitUntil(() -> h.assertTrue(battle.state() == BattleFlow.State.FIGHT && f.mate.level() == f.arena(TeamId.RED).level(),
@@ -118,7 +145,21 @@ public class ArenaGameTest {
                 h.assertTrue(f.red.position().distanceTo(spawn) < 1.5, "Respawn at the team spawn");
                 h.assertTrue(f.red.getHealth() == f.red.getMaxHealth(), "Full health");
                 h.assertTrue(f.red.getInventory().getItem(0).is(Items.DIAMOND), "Items stay");
-                killPlayer(f.red); killPlayer(f.mate);
+                var rules = f.red.level().getGameRules();
+                var rule = net.minecraft.world.level.gamerules.GameRules.SHOW_DEATH_MESSAGES;
+                boolean original = rules.get(rule);
+                f.chat.values().forEach(List::clear);
+                serverMessages.clear();
+                rules.set(rule, false, f.ctx.server());
+                try {
+                    killPlayer(f.red);
+                    String death = f.red.getCombatTracker().getDeathMessage().getString();
+                    for (var messages : f.chat.values())
+                        h.assertTrue(!messages.contains(death), "Disabled death messages do not reach players");
+                    h.assertTrue(!serverMessages.contains(death), "Disabled death messages do not reach the server log");
+                    h.assertTrue(f.red.isAlive() && f.red.isSpectator(), "Disabled messages preserve arena death handling");
+                } finally { rules.set(rule, original, f.ctx.server()); }
+                killPlayer(f.mate);
             })
             .thenWaitUntil(() -> h.assertTrue(f.results.contains("eliminated RED 0 0"), "Both down -> eliminated"))
             .thenSucceed();

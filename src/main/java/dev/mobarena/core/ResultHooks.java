@@ -6,4 +6,7 @@ public interface ResultHooks {
     /** Time starts at the first wave countdown after the arena is ready. */
     void teamFinished(TeamId team, long timeTicks);
     void teamEliminated(TeamId team, TeamProgress progress);
+    default void teamEliminated(TeamId team, TeamProgress progress, EliminationReason reason) {
+        teamEliminated(team, progress);
+    }
 }
