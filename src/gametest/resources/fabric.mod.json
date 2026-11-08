@@ -34,7 +34,8 @@
       "dev.mobarena.gametest.DeathScreenGameTest",
       "dev.mobarena.gametest.PolishGameTest",
       "dev.mobarena.arena.TeleportCollisionGameTest",
-      "dev.mobarena.gametest.ArenaPrepGameTest"
+      "dev.mobarena.gametest.ArenaPrepGameTest",
+      "dev.mobarena.arena.PlayerSupportDiagnosticGameTest"
     ]
   },
   "depends": {
