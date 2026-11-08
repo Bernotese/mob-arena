@@ -11,6 +11,7 @@ import dev.mobarena.team.TeamManager;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import java.io.IOException;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -44,9 +45,10 @@ public final class MobArena implements ModInitializer {
         dev.mobarena.result.ResultModule.init();
         CommandRegistry.initialize();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> { TeamManager.get().initialize(server); lobby.prepare(server); });
-        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            TeamManager.get().sync(handler.player);
-            lobby.join(handler.player);
+        // Level changes on join only in ServerPlayerEvents.JOIN, after level registration.
+        ServerPlayerEvents.JOIN.register(player -> {
+            TeamManager.get().sync(player);
+            lobby.join(player);
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> lobby.leave(handler.player));
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) ->

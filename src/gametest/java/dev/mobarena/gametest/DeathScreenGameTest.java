@@ -84,6 +84,7 @@ public class DeathScreenGameTest {
         var p = f.live(f.red);
         h.assertTrue(p.isAlive() && p.gameMode() == GameType.SURVIVAL, "Dead joiner returns alive in survival");
         h.assertTrue(p.level() == f.ctx.prepLevel(TeamId.RED), "Join uses team overworld");
+        RejoinGameTest.assertSingle(f, f.ctx.prepLevel(TeamId.RED));
         h.assertTrue(p.position().distanceTo(Vec3.atBottomCenterOf(f.ctx.get(TeamWorlds.KEY)
                 .get(TeamId.RED).prepSpawn())) < 2, "Join uses prep spawn");
         h.assertTrue(p.level() != GameLevels.level(TeamId.RED, WorldKind.PREP_END), "Join avoids team End");
@@ -96,6 +97,7 @@ public class DeathScreenGameTest {
         endDeath(f); disconnect(f); f.arena();
         h.startSequence().thenWaitUntil(f::arenaReady).thenExecute(f.check(() -> {
             rejoin(f); timer(f);
+            RejoinGameTest.assertSingle(f, f.ctx.arenaLevel(TeamId.RED));
         })).thenIdle(61).thenExecute(f.check(() -> {
             survival(f);
             h.assertTrue(f.battle(TeamId.RED).state() != BattleFlow.State.ELIMINATED, "RED remains active");

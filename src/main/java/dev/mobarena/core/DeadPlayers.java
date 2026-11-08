@@ -23,7 +23,7 @@ public final class DeadPlayers {
         return player.connection == null ? player : player.connection.player;
     }
 
-    /** JOIN runs before PlayerList registration. Reset the fresh entity before join routing. */
+    /** Fabric JOIN fires inside placeNewPlayer, before PlayerList and level registration. Do not teleport here. */
     public static void prepareJoin(ServerPlayer player) {
         if (!player.isDeadOrDying()) return;
         player.setHealth(player.getMaxHealth());
