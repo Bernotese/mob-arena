@@ -62,8 +62,8 @@ public final class LobbyManager implements PhaseListener {
         ReturnPosition pos = returns.remove(player.getUUID());
         if (pos != null && player.level().getServer().getLevel(pos.level.dimension()) != null) {
             player.teleportTo(pos.level, pos.x, pos.y, pos.z, Set.of(), pos.yaw, pos.pitch, true);
-            Teleports.clearSupport(player);
             player.setGameMode(game.phase() == Phase.PREP ? GameType.SURVIVAL : GameType.SPECTATOR);
+            Teleports.clearSupport(player);
             protect(player, player.isSpectator());
         } else {
             ServerLevel level = game.phase() == Phase.PREP ? ctx.prepLevel(ctx.team(player.getUUID())) : ctx.arenaLevel(ctx.team(player.getUUID()));
@@ -71,8 +71,8 @@ public final class LobbyManager implements PhaseListener {
             else {
                 var data = level.getRespawnData();
                 player.teleportTo(level, data.pos().getX() + 0.5, data.pos().getY(), data.pos().getZ() + 0.5, Set.of(), data.yaw(), data.pitch(), true);
-                Teleports.clearSupport(player);
                 player.setGameMode(game.phase() == Phase.PREP ? GameType.SURVIVAL : GameType.SPECTATOR);
+                Teleports.clearSupport(player);
                 protect(player, player.isSpectator());
             }
         }
@@ -146,6 +146,7 @@ public final class LobbyManager implements PhaseListener {
         protect(player, true);
     }
 
+    /** Spread only across full floor faces with empty standing space; skip carpet and pressure plates. */
     private net.minecraft.world.phys.Vec3 lobbyPosition(ServerPlayer player) {
         var level = player.level().getServer().overworld();
         var center = new net.minecraft.world.phys.Vec3(spawn.x, spawn.y, spawn.z);

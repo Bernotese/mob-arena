@@ -25,7 +25,8 @@ public final class ConfigBounds {
         return bounds;
     }
     public static Bounds bounds(String key) {
-        if ("waveMaxTimeSeconds".equals(key) && Boolean.getBoolean("mobarena.debug")) return new Bounds(1, 3600);
-        return VALUES.get(key);
+        Bounds bounds = VALUES.get(key);
+        if ("waveMaxTimeSeconds".equals(key) && Boolean.getBoolean("mobarena.debug")) return new Bounds(1, bounds.max());
+        return bounds;
     }
 }

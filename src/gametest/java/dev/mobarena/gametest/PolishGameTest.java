@@ -73,6 +73,7 @@ public class PolishGameTest {
             f.server.overworld().setBlockAndUpdate(hole, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
             try {
                 lobby.sendToLobby(f.red, false);
+                h.assertTrue(f.server.overworld().getBlockState(hole).isAir(), "Prepare leaves the test hole open");
                 h.assertTrue(!f.red.blockPosition().below().equals(hole), "Lobby spread avoids the floor hole");
                 h.assertTrue(f.red.verticalCollisionBelow, "Alternate lobby block has support");
             } finally { f.server.overworld().setBlockAndUpdate(hole, old); }

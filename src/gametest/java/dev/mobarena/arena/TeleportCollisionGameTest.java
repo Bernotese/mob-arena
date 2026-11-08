@@ -18,7 +18,7 @@ public class TeleportCollisionGameTest {
         var bounds = arena.layout().bounds();
         for (int x = ((int) Math.floor(bounds.minX)) >> 4; x <= ((int) Math.floor(bounds.maxX - 1)) >> 4; x++) {
             for (int z = ((int) Math.floor(bounds.minZ)) >> 4; z <= ((int) Math.floor(bounds.maxZ - 1)) >> 4; z++) {
-                h.assertTrue(arena.level().getForcedChunks().contains(net.minecraft.world.level.ChunkPos.asLong(x, z)),
+                h.assertTrue(arena.level().getForceLoadedChunks().contains(net.minecraft.world.level.ChunkPos.pack(x, z)),
                         "Arena chunk is forced before ARENA entry");
             }
         }

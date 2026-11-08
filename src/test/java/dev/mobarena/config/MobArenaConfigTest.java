@@ -26,6 +26,30 @@ class MobArenaConfigTest {
         }
     }
 
+    @Test void debugWaveTimeLoadsSafelyWithoutDebug() throws Exception {
+        String previous = System.getProperty("mobarena.debug");
+        try {
+            Path path = directory.resolve("debug-restart.json");
+            System.setProperty("mobarena.debug", "true");
+            var config = new MobArenaConfig();
+            config.waveMaxTimeSeconds = 2;
+            config.prepTimeSeconds = 120;
+            config.save(path);
+            System.clearProperty("mobarena.debug");
+            var loaded = MobArenaConfig.load(path);
+            assertEquals(60, loaded.waveMaxTimeSeconds);
+            assertEquals(120, loaded.prepTimeSeconds);
+            var store = new ConfigStore(path);
+            store.set("randomizerEnabled", "false");
+            assertEquals(60, store.current().waveMaxTimeSeconds);
+            assertEquals(120, store.current().prepTimeSeconds);
+            assertFalse(store.current().randomizerEnabled);
+        } finally {
+            if (previous == null) System.clearProperty("mobarena.debug");
+            else System.setProperty("mobarena.debug", previous);
+        }
+    }
+
     @Test void roundTripAllFieldsAndStoreUpdates() throws Exception {
         Path path = directory.resolve("mob-arena.json");
         MobArenaConfig config = MobArenaConfig.load(path);
