@@ -139,10 +139,30 @@ public final class LobbyManager implements PhaseListener {
 
     public void sendToLobby(ServerPlayer player, boolean spectator) {
         prepare(player.level().getServer());
-        player.teleportTo(player.level().getServer().overworld(), spawn.x, spawn.y, spawn.z, Set.of(), spawn.yaw, spawn.pitch, true);
-        Teleports.clearSupport(player);
+        var target = lobbyPosition(player);
+        player.teleportTo(player.level().getServer().overworld(), target.x, target.y, target.z, Set.of(), spawn.yaw, spawn.pitch, true);
         player.setGameMode(spectator ? GameType.SPECTATOR : GameType.ADVENTURE);
+        Teleports.clearSupport(player);
         protect(player, true);
+    }
+
+    private net.minecraft.world.phys.Vec3 lobbyPosition(ServerPlayer player) {
+        var level = player.level().getServer().overworld();
+        var center = new net.minecraft.world.phys.Vec3(spawn.x, spawn.y, spawn.z);
+        for (int radius = 0; radius <= 3; radius++) {
+            for (int x = -radius; x <= radius; x++) for (int z = -radius; z <= radius; z++) {
+                if (Math.max(Math.abs(x), Math.abs(z)) != radius) continue;
+                var target = center.add(x, 0, z);
+                var below = BlockPos.containing(target).below();
+                if (!level.getBlockState(below).isFaceSturdy(level, below, net.minecraft.core.Direction.UP)) continue;
+                var box = player.getBoundingBox().move(target.subtract(player.position()));
+                if (!level.noCollision(player, box)) continue;
+                boolean occupied = level.getServer().getPlayerList().getPlayers().stream().anyMatch(other ->
+                        other != player && other.level() == level && other.position().distanceToSqr(target) < 0.81);
+                if (!occupied) return target;
+            }
+        }
+        return center;
     }
 
     private void protect(ServerPlayer player, boolean protect) {
