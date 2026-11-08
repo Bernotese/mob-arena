@@ -1,25 +1,30 @@
-# Status (2026-11-07, 16:00 UTC)
+# Status (2026-11-08)
 
-## Version 1: code complete on main
-All tasks T0–T10 are merged. `main` build: 105 unit tests, 121 GameTests (about 1.5 min). CI on GitHub runs the same build.
-Smoke runs on runServer with Carpet (tools/smoke.py s1, s15, s16): PASS.
+## Version 1 plus real-client fixes (T12) on main
+All tasks T0–T12 are merged. `main` build: 108 unit tests, 144 GameTests. CI on GitHub runs the same build.
 
-Merged after the first pause:
-- T7b arena battle (slime split, no infighting, no player-built golems/withers), TestEnd test cleanup.
-- T8b part 1 and 2: results, end sequence, sudden death.
-- T10a debug driver, T10c/T10d full-game GameTests (S1–S7, S9, S10, S12–S14), T10b/T10e smoke tools.
-- Fixes found by the tests: shutdown race (close removed levels), fast close (no 30 s freeze at game end), async game start, structure cache crash and same-seed structure lock, teleport support block, no random jockeys in waves.
+T12 (from the real-client test, docs/findings/2026-11-08-real-client.md, plan docs/plans/T12.md):
+- Bug 1: a player on the death screen is respawned at each phase change, at game end and at join. No false ALL_DOWN.
+- Bug 2: a PREP death always respawns in the team overworld (user decision).
+- Death messages go to all online players and the server log (user decision); /ma debug state shows elimination reasons.
+- Go title at wave spawn, backpack Q resync, selected wave tab marked.
+- Result title 2 s after the team title, lobby spread, debug wave time min 1 s.
+- "standing on air" fix after teleports; missing lobby platform is rebuilt.
+- Sounds (vanilla, Master source): countdown, Go, wave clear, finish, elimination, sudden death, win/lose/draw.
 
 ## Open
-- User: manual test with a real client, see docs/MANUAL-TEST.md.
-- Possible later: sounds (the mod plays none now), T11 features (mob variants, stats screen).
+- User: second real-client test (VM). Check: death screen across phase change and rejoin while dead, Go title, backpack Q, wave tab mark, sounds (loudness), "standing on air" log, lobby spread.
+- Bug 2 cause of the End platform respawn is not proven (old main already sent normal End deaths to the overworld). Watch for it in the rerun.
+- Not tested yet: 2 viewers in the wave menu at the same time, backpack into a chest, S15 load, server stop during ARENA.
+- Possible later: T11 features (mob variants, stats screen).
 
-## Open user questions
+## Rules and defaults
 - Ender Dragon in each team End spawns but does not count (default).
-- Defaults: maxAliveMobs 150 with a queue; eliminated players spectate the other arena.
-- User decision: player-built golems and withers are allowed in arenas and are not wave mobs.
-- Rule set by the orchestrator: waves have no random jockeys.
-- Golems summoned by a wave villager are wave mobs (summon rule); built golems stay until the arena is deleted.
+- maxAliveMobs 150 with a queue; eliminated players spectate the other arena.
+- Player-built golems and withers are allowed and are not wave mobs. Golems summoned by a wave villager are wave mobs.
+- Waves have no random jockeys.
+- A charged respawn anchor in the team Nether loses its charge on a PREP death, but the player respawns in the team overworld.
+- Lobby setSpawn: stand on the block center (the floor check reads the block under the center).
 
 ## Notes
 - Run Gradle with tools/gradle.sh (Java 25, max 3 builds at a time).
