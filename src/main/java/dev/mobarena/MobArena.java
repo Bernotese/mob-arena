@@ -29,7 +29,7 @@ public final class MobArena implements ModInitializer {
         catch (IOException | RuntimeException e) { throw new IllegalStateException("Cannot load Mob Arena config", e); }
         LobbyManager lobby = new LobbyManager(FabricLoader.getInstance().getConfigDir().resolve("mob-arena-lobby.json"));
         GameManager.get().setConfigSource(config::snapshot);
-        // Register the lobby first. Module listeners run after inventory cleanup.
+        // Early JOIN: field/inventory/HUD resets only; routing runs in ServerPlayerEvents.JOIN.
         GameManager.get().register(lobby);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
                 dev.mobarena.core.DeadPlayers.prepareJoin(handler.player));
