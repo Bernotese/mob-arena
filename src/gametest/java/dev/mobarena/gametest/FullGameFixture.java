@@ -66,7 +66,14 @@ final class FullGameFixture implements AutoCloseable {
     List<ServerPlayer> teamPlayers() {
         return java.util.stream.Stream.of(red, redMate, blue, blueMate).filter(Objects::nonNull).toList();
     }
-    ServerPlayer player() { var p = TestPlayers.create(h); players.add(p); return p; }
+    final Map<UUID, List<net.minecraft.network.protocol.Packet<?>>> packets = new HashMap<>();
+    ServerPlayer player() {
+        var sent = new ArrayList<net.minecraft.network.protocol.Packet<?>>();
+        var p = TestPlayers.recording(h, null, sent);
+        packets.put(p.getUUID(), sent);
+        players.add(p);
+        return p;
+    }
     void command(String command, ServerPlayer player) {
         try { h.assertTrue(server.getCommands().getDispatcher().execute(command, player.createCommandSourceStack()) == 1,
                 "Command succeeds: " + command); }

@@ -7,6 +7,8 @@ import dev.mobarena.core.ResultHooks;
 import dev.mobarena.hud.HudOverrides;
 import dev.mobarena.hud.TimeFormat;
 import dev.mobarena.hud.Titles;
+import dev.mobarena.hud.GameSound;
+import dev.mobarena.hud.Sounds;
 import dev.mobarena.team.TeamId;
 import it.unimi.dsi.fastutil.ints.IntList;
 import java.util.List;
@@ -40,9 +42,21 @@ final class EndSequence implements PhaseListener {
         // Boss bar and title use the same text ("Game over" after an admin skip, not "Draw").
         if (result == NO_RESULT) HudOverrides.of(ctx).setResultText(Component.literal("Game over"));
         else HudOverrides.of(ctx).setResult(result.winner().orElse(null));
-        var players = ctx.server().getPlayerList().getPlayers();
-        Titles.showAll(List.copyOf(players), title(result), Component.literal(result.reason()), 10, 70, 20);
+        announce(ctx, result);
         for (Component line : summary(ctx, result)) ctx.server().getPlayerList().broadcastSystemMessage(line, false);
+    }
+
+    static void announce(GameContext ctx, ResultKeys.GameResult result) {
+        for (var player : List.copyOf(ctx.server().getPlayerList().getPlayers())) {
+            Titles.show(player, title(result), Component.literal(result.reason()), 10, 70, 20);
+            resultSound(ctx.team(player.getUUID()), result, result == NO_RESULT).ifPresent(sound -> Sounds.play(player, sound));
+        }
+    }
+
+    static Optional<GameSound> resultSound(TeamId playerTeam, ResultKeys.GameResult result, boolean adminStop) {
+        if (adminStop) return Optional.empty();
+        if (playerTeam == null || result.winner().isEmpty()) return Optional.of(GameSound.DRAW);
+        return Optional.of(result.winner().get() == playerTeam ? GameSound.WIN : GameSound.LOSE);
     }
 
     @Override public void onTick(Phase phase, GameContext ctx) {

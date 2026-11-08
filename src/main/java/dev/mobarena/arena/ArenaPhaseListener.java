@@ -1,6 +1,8 @@
 package dev.mobarena.arena;
 
 import dev.mobarena.MobArena;
+import dev.mobarena.hud.GameSound;
+import dev.mobarena.hud.Sounds;
 import dev.mobarena.core.*;
 import dev.mobarena.team.TeamId;
 import dev.mobarena.wave.WaveKeys;
@@ -50,6 +52,7 @@ public final class ArenaPhaseListener implements PhaseListener {
             group.broadcastToTeams(Component.literal("Sudden death! Each team fights all enemy waves at once. "
                     + "The first team that kills all mobs wins.").withStyle(ChatFormatting.DARK_PURPLE));
             group.resetPlayers();
+            for (var team : TeamId.values()) Sounds.playAll(group.onlinePlayers(team), GameSound.SUDDEN_DEATH);
         }
         return group;
     }
