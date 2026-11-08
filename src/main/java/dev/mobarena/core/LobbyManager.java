@@ -148,20 +148,27 @@ public final class LobbyManager implements PhaseListener {
         protect(player, true);
     }
 
-    /** Spread across supported positions with empty standing space. */
+    /**
+     * Prefer a two-block grid inside the platform. If no position is free, try one-block rings
+     * for small custom lobbies, then fall back to the center.
+     */
     private net.minecraft.world.phys.Vec3 lobbyPosition(ServerPlayer player) {
         var level = player.level().getServer().overworld();
         var center = new net.minecraft.world.phys.Vec3(spawn.x, spawn.y, spawn.z);
-        for (int radius = 0; radius <= 3; radius++) {
-            for (int x = -radius; x <= radius; x++) for (int z = -radius; z <= radius; z++) {
-                if (Math.max(Math.abs(x), Math.abs(z)) != radius) continue;
-                var target = center.add(x, 0, z);
-                if (!hasSupport(level, target.x, target.y, target.z)) continue;
-                var box = player.getBoundingBox().move(target.subtract(player.position()));
-                if (!level.noCollision(player, box)) continue;
-                boolean occupied = level.getServer().getPlayerList().getPlayers().stream().anyMatch(other ->
-                        other != player && other.level() == level && other.position().distanceToSqr(target) < 0.81);
-                if (!occupied) return target;
+        for (int step = 2; step >= 1; step--) {
+            double minimumDistanceSquared = step == 2 ? 4.0 : 0.81;
+            for (int radius = step == 2 ? 0 : 1; radius <= 4; radius += step) {
+                for (int x = -radius; x <= radius; x += step) for (int z = -radius; z <= radius; z += step) {
+                    if (Math.max(Math.abs(x), Math.abs(z)) != radius) continue;
+                    var target = center.add(x, 0, z);
+                    if (!hasSupport(level, target.x, target.y, target.z)) continue;
+                    var box = player.getBoundingBox().move(target.subtract(player.position()));
+                    if (!level.noCollision(player, box)) continue;
+                    boolean occupied = level.getServer().getPlayerList().getPlayers().stream().anyMatch(other ->
+                            other != player && other.level() == level
+                                    && other.position().distanceToSqr(target) < minimumDistanceSquared);
+                    if (!occupied) return target;
+                }
             }
         }
         return center;

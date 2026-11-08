@@ -100,6 +100,15 @@ public class LobbyGameTest {
 
     @GameTest
     public void savedCustomLobbyOnBottomSlabOverAirStaysUnchanged(GameTestHelper helper) throws Exception {
+        checkSlabLobby(helper, 2, 4.0);
+    }
+
+    @GameTest(environment = "mobarena:lobby_compact_slab")
+    public void compactSlabLobbyUsesCloserSupportedFallback(GameTestHelper helper) throws Exception {
+        checkSlabLobby(helper, 1, 0.81);
+    }
+
+    private void checkSlabLobby(GameTestHelper helper, int floorRadius, double minimumDistanceSquared) throws Exception {
         var player = TestPlayers.create(helper);
         var second = TestPlayers.create(helper);
         var server = helper.getLevel().getServer();
@@ -110,10 +119,12 @@ public class LobbyGameTest {
             var slab = net.minecraft.world.level.block.Blocks.STONE_SLAB.defaultBlockState()
                     .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.SLAB_TYPE,
                             net.minecraft.world.level.block.state.properties.SlabType.BOTTOM);
-            for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++) {
+            // Clear the entire candidate area so only this fixture's slab floor can support players.
+            for (int x = -4; x <= 4; x++) for (int z = -4; z <= 4; z++) {
                 var tile = floor.offset(x, 0, z);
                 level.setBlockAndUpdate(tile.below(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
-                level.setBlockAndUpdate(tile, slab);
+                level.setBlockAndUpdate(tile, Math.abs(x) <= floorRadius && Math.abs(z) <= floorRadius
+                        ? slab : net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
                 level.setBlockAndUpdate(tile.above(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
                 level.setBlockAndUpdate(tile.above(2), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
             }
@@ -127,8 +138,12 @@ public class LobbyGameTest {
             helper.assertValueEqual(Files.readString(path), saved, "Preparing a custom slab spawn keeps its saved data");
             loaded.sendToLobby(player, false);
             loaded.sendToLobby(second, false);
-            helper.assertTrue(player.position().distanceToSqr(second.position()) >= 0.81,
-                    "Players spread to separate positions on the bottom-slab floor");
+            helper.assertTrue(player.position().distanceToSqr(second.position()) >= minimumDistanceSquared,
+                    "Players use the required spacing on the bottom-slab floor");
+            if (floorRadius == 1)
+                helper.assertTrue(player.position().distanceToSqr(second.position()) < 4.0,
+                        "The compact floor uses the closer fallback instead of stacking at the center");
+            helper.assertTrue(player.verticalCollisionBelow, "The first player has slab support");
             helper.assertTrue(second.verticalCollisionBelow && Math.abs(second.getY() - floor.getY() - 0.5) < 0.001,
                     "The spread position has slab support at the half-block height");
             helper.assertTrue(Math.abs(player.getY() - floor.getY() - 0.5) < 0.001, "Lobby return keeps the half-block spawn height");
