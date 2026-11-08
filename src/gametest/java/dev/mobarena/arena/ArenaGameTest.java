@@ -58,6 +58,14 @@ public class ArenaGameTest {
             .thenWaitUntil(() -> h.assertTrue(f.red.level() == f.arena(TeamId.RED).level(), "RED player is in the RED arena"))
             .thenWaitUntil(() -> h.assertTrue(mobs(f.arena(TeamId.RED), tag).size() == 3, "3 zombies spawn"))
             .thenExecute(() -> {
+                var sent = f.packets.get(f.red.getUUID());
+                h.assertTrue(sent.stream().anyMatch(packet -> packet instanceof
+                        net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket title
+                        && title.text().getString().equals("Go")), "Wave spawn sends the Go title");
+                h.assertTrue(sent.stream().anyMatch(packet -> packet instanceof
+                        net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket subtitle
+                        && subtitle.text().getString().equals("Wave 1 / 3 mobs")),
+                        "Wave spawn subtitle shows the wave name and mob count");
                 for (var mob : mobs(f.arena(TeamId.RED), tag)) {
                     h.assertTrue(mob.getType() == EntityTypes.ZOMBIE, "Wave mob is a zombie");
                     h.assertTrue(mob.isPersistenceRequired(), "Wave mob is persistent");

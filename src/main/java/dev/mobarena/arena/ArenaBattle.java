@@ -116,8 +116,8 @@ public final class ArenaBattle {
 
     private void handle(BattleEvent event, long now) {
         switch (event) {
-            case BattleEvent.Countdown c -> title(c.secondsLeft() > 0 ? Component.literal(String.valueOf(c.secondsLeft()))
-                    : Component.literal("Go"), Component.literal(waveName(c.wave())), 0, 25, 5);
+            case BattleEvent.Countdown c -> title(Component.literal(String.valueOf(c.secondsLeft())),
+                    Component.literal(waveName(c.wave())), 0, 25, 5);
             case BattleEvent.SpawnWave s -> spawnWave(s.wave(), now);
             case BattleEvent.Glow g -> {
                 glow = true;
@@ -155,7 +155,7 @@ public final class ArenaBattle {
         var orders = SpawnPlanner.plan(script.waves().get(wave - 1), layout.mobSpawns().size(),
                 layout.waterSpawns().size(), WaveSpawner::isWater, seed);
         queue = new SpawnQueue(orders, group.maxAliveMobs());
-        if (!orders.isEmpty()) title(Component.literal(waveName(wave)), Component.literal(orders.size() + " mobs"), 0, 30, 10);
+        if (!orders.isEmpty()) title(Component.literal("Go"), Component.literal(waveName(wave) + " / " + orders.size() + " mobs"), 0, 30, 10);
     }
 
     void countKill(LivingEntity entity) {
