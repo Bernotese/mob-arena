@@ -34,7 +34,8 @@ final class RespawnManager {
         // A totem in a hand saves the player the vanilla way (Fabric fires ALLOW_DEATH before the totem check).
         if (player.getMainHandItem().is(Items.TOTEM_OF_UNDYING) || player.getOffhandItem().is(Items.TOTEM_OF_UNDYING)) return true;
         Component message = player.getCombatTracker().getDeathMessage();
-        for (var mate : group.onlinePlayers(team)) mate.sendSystemMessage(message);
+        if (player.level().getGameRules().get(net.minecraft.world.level.gamerules.GameRules.SHOW_DEATH_MESSAGES))
+            group.ctx().server().getPlayerList().broadcastSystemMessage(message, false);
         down(player, battle, true);
         return false;
     }

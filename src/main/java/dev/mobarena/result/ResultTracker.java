@@ -1,5 +1,6 @@
 package dev.mobarena.result;
 
+import dev.mobarena.core.EliminationReason;
 import dev.mobarena.core.Phase;
 import dev.mobarena.core.ResultHooks;
 import dev.mobarena.core.TeamProgress;
@@ -42,6 +43,10 @@ public final class ResultTracker implements ResultHooks {
     @Override public void teamFinished(TeamId team, long timeTicks) { record(team, new Outcome.Finished(timeTicks)); }
 
     @Override public void teamEliminated(TeamId team, TeamProgress progress) { record(team, new Outcome.Eliminated(progress)); }
+
+    @Override public void teamEliminated(TeamId team, TeamProgress progress, EliminationReason reason) {
+        record(team, new Outcome.Eliminated(progress, reason));
+    }
 
     /** The first event per team and phase wins. Events outside ARENA and SUDDEN_DEATH are ignored. */
     private void record(TeamId team, Outcome outcome) {
