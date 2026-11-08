@@ -46,6 +46,10 @@ Send these commands as an operator in the lobby. The values apply at the next ph
 - Open the config menu: `/ma config` (permission level 2).
 - Go back to the default values: `/ma config reset`.
 
+For effect tests, start the server with `-Dmobarena.debug=true -Dmobarena.debug.keepEffects=true` before `-jar`.
+Arena entry keeps effects. This switch also keeps them at sudden death start.
+Without both properties, sudden death clears effects as usual. Death, a rejoin in the arena, and lobby cleanup still clear effects.
+
 ## 4. Admin commands, step by step
 1. Set the lobby spawn (optional): stand on the spawn point and use `/ma setlobby`.
 2. Make the teams:

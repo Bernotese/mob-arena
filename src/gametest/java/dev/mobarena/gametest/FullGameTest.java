@@ -343,6 +343,7 @@ public class FullGameTest {
             assertSelectedWave(h, second, 1);
             waveClick(f.red, 31, 0);
             assertSelectedWave(h, first, 3);
+            assertSelectedWave(h, second, 1);
             waveClick(f.red, 29, 0);
             assertSelectedWave(h, first, 1);
             waveClick(f.red, 0, 0);
@@ -350,10 +351,19 @@ public class FullGameTest {
             h.assertTrue(setup.waveCount(1, "minecraft:zombie") == 1, "Container click moves one mob");
             h.startSequence().thenIdle(1).thenExecute(f.check(() -> {
                 assertCount(h, second, 36, 1);
+                waveClick(f.redMate, 30, 0);
+                assertSelectedWave(h, first, 1);
+                assertSelectedWave(h, second, 2);
+                waveClick(f.redMate, 31, 0);
+                assertSelectedWave(h, first, 1);
+                assertSelectedWave(h, second, 3);
+                waveClick(f.redMate, 29, 0);
+                assertSelectedWave(h, second, 1);
                 waveClick(f.redMate, 0, 1);
                 h.assertTrue(setup.waveCount(1, "minecraft:zombie") == 12, "Second viewer moves the remaining pool");
             })).thenIdle(1).thenExecute(f.check(() -> {
                 assertCount(h, first, 36, 12); assertCount(h, second, 36, 12);
+                assertSelectedWave(h, first, 1); assertSelectedWave(h, second, 1);
                 waveClick(f.redMate, 36, 0);
             })).thenIdle(1).thenExecute(f.check(() -> {
                 assertCount(h, first, 36, 11); assertCount(h, second, 36, 11);
@@ -374,7 +384,12 @@ public class FullGameTest {
             var stack = gui.getGuiElement(28 + wave).getItemStack();
             h.assertTrue(stack.getHoverName().getString().equals((wave == selected ? "▶ " : "") + "Wave " + wave),
                     "Only the selected wave has the name prefix");
+            Item[] banners = {Items.BANNER.white(), Items.BANNER.yellow(), Items.BANNER.red()};
+            h.assertTrue(stack.is(wave == selected ? Items.EMERALD_BLOCK : banners[wave - 1]),
+                    "Only the selected wave uses the emerald block icon");
             h.assertTrue(stack.hasFoil() == (wave == selected), "Only the selected wave has a glint");
+            h.assertTrue(Boolean.valueOf(wave == selected).equals(stack.get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE)),
+                    "Each wave explicitly sets its glint state");
         }
     }
 
