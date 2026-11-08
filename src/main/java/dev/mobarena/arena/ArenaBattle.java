@@ -5,6 +5,8 @@ import dev.mobarena.hud.HudLine;
 import dev.mobarena.hud.HudOverrides;
 import dev.mobarena.hud.TimeFormat;
 import dev.mobarena.hud.Titles;
+import dev.mobarena.hud.GameSound;
+import dev.mobarena.hud.Sounds;
 import dev.mobarena.team.TeamId;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -90,8 +92,9 @@ public final class ArenaBattle {
         boolean wasWaiting = flow.state() == BattleFlow.State.WAITING_ARENA;
         var input = new TickInput(ready, spawningDone, Math.max(0, alive), kills,
                 group.allDown(this), group.anyOnline(team));
-        for (var event : flow.tick(input)) handle(event, now);
+        var events = flow.tick(input);
         if (wasWaiting && flow.state() != BattleFlow.State.WAITING_ARENA) onReady();
+        for (var event : events) handle(event, now);
         if (now % 20 == 0) hud();
     }
 
@@ -117,19 +120,23 @@ public final class ArenaBattle {
 
     private void handle(BattleEvent event, long now) {
         switch (event) {
-            case BattleEvent.Countdown c -> title(Component.literal(String.valueOf(c.secondsLeft())),
-                    Component.literal(waveName(c.wave())), 0, 25, 5);
+            case BattleEvent.Countdown c -> {
+                if (c.secondsLeft() > 0) sound(GameSound.COUNTDOWN);
+                title(Component.literal(String.valueOf(c.secondsLeft())), Component.literal(waveName(c.wave())), 0, 25, 5);
+            }
             case BattleEvent.SpawnWave s -> spawnWave(s.wave(), now);
             case BattleEvent.Glow g -> {
                 glow = true;
                 for (var mob : waveMobs()) mob.setGlowingTag(true);
             }
             case BattleEvent.WaveCleared c -> {
+                if (c.wave() < script.waves().size()) sound(GameSound.WAVE_CLEARED);
                 queue = null;
                 currentTag = null;
                 title(Component.literal(waveName(c.wave()) + " cleared"), cooldownText(c.wave()), 5, 40, 10);
             }
             case BattleEvent.Finished f -> {
+                sound(GameSound.FINISHED);
                 title(Component.literal("All waves cleared"), Component.literal("Time " + TimeFormat.mmss(f.ticks())), 5, 60, 10);
                 listener.finished(team, f.ticks());
             }
@@ -140,12 +147,14 @@ public final class ArenaBattle {
                 currentTag = null;
                 title(Component.literal("Eliminated"), Component.literal(reasonText(e.reason())), 5, 60, 10);
                 group.onEliminated(this);
+                sound(GameSound.ELIMINATED);
                 listener.eliminated(team, e.progress(), e.reason());
             }
         }
     }
 
     private void spawnWave(int wave, long now) {
+        sound(GameSound.GO);
         int tagWave = suddenDeath ? WaveTags.SUDDEN_DEATH_WAVE : wave;
         currentTag = WaveTags.tag(team, tagWave);
         kills = 0;
@@ -248,6 +257,7 @@ public final class ArenaBattle {
             case NO_PLAYERS -> "No team player is online";
         };
     }
+    private void sound(GameSound sound) { Sounds.playAll(group.onlinePlayers(team), sound); }
     private void title(Component title, Component subtitle, int in, int stay, int out) {
         Titles.showAll(group.onlinePlayers(team), title, subtitle, in, stay, out);
     }
