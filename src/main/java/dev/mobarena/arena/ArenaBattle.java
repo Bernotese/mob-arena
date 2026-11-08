@@ -107,8 +107,8 @@ public final class ArenaBattle {
         Vec3 spawn = Vec3.atBottomCenterOf(arena.layout().teamSpawn());
         player.stopRiding();
         player.teleportTo(arena.level(), spawn.x, spawn.y, spawn.z, Set.of(), player.getYRot(), 0, true);
-        dev.mobarena.core.Teleports.clearSupport(player);
         player.setGameMode(GameType.SURVIVAL);
+        dev.mobarena.core.Teleports.clearSupport(player);
         if (player.getAbilities().invulnerable) { player.getAbilities().invulnerable = false; player.onUpdateAbilities(); }
         player.setHealth(player.getMaxHealth());
         player.getFoodData().setFoodLevel(20);

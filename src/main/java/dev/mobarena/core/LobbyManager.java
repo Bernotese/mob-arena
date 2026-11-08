@@ -50,7 +50,7 @@ public final class LobbyManager implements PhaseListener {
 
     public void leave(ServerPlayer player) {
         GameManager game = GameManager.get(); GameContext ctx = game.context();
-        if (ctx != null && ctx.team(player.getUUID()) != null && game.phase() != Phase.WAVE_CONFIG)
+        if (!player.isDeadOrDying() && ctx != null && ctx.team(player.getUUID()) != null && game.phase() != Phase.WAVE_CONFIG)
             returns.put(player.getUUID(), new ReturnPosition(player.level(), player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
     }
 
@@ -62,8 +62,8 @@ public final class LobbyManager implements PhaseListener {
         ReturnPosition pos = returns.remove(player.getUUID());
         if (pos != null && player.level().getServer().getLevel(pos.level.dimension()) != null) {
             player.teleportTo(pos.level, pos.x, pos.y, pos.z, Set.of(), pos.yaw, pos.pitch, true);
-            Teleports.clearSupport(player);
             player.setGameMode(game.phase() == Phase.PREP ? GameType.SURVIVAL : GameType.SPECTATOR);
+            Teleports.clearSupport(player);
             protect(player, player.isSpectator());
         } else {
             ServerLevel level = game.phase() == Phase.PREP ? ctx.prepLevel(ctx.team(player.getUUID())) : ctx.arenaLevel(ctx.team(player.getUUID()));
@@ -71,8 +71,8 @@ public final class LobbyManager implements PhaseListener {
             else {
                 var data = level.getRespawnData();
                 player.teleportTo(level, data.pos().getX() + 0.5, data.pos().getY(), data.pos().getZ() + 0.5, Set.of(), data.yaw(), data.pitch(), true);
-                Teleports.clearSupport(player);
                 player.setGameMode(game.phase() == Phase.PREP ? GameType.SURVIVAL : GameType.SPECTATOR);
+                Teleports.clearSupport(player);
                 protect(player, player.isSpectator());
             }
         }
@@ -115,6 +115,8 @@ public final class LobbyManager implements PhaseListener {
             BlockPos pos = server.overworld().getRespawnData().pos();
             spawn = new Spawn(pos.getX() + 0.5, Math.max(pos.getY(), 80) + 3, pos.getZ() + 0.5, 0, 0);
             buildPlatform(server.overworld()); save();
+        } else if (!hasSupport(server.overworld(), spawn.x, spawn.y, spawn.z)) {
+            buildPlatform(server.overworld());
         }
     }
 
@@ -139,10 +141,38 @@ public final class LobbyManager implements PhaseListener {
 
     public void sendToLobby(ServerPlayer player, boolean spectator) {
         prepare(player.level().getServer());
-        player.teleportTo(player.level().getServer().overworld(), spawn.x, spawn.y, spawn.z, Set.of(), spawn.yaw, spawn.pitch, true);
-        Teleports.clearSupport(player);
+        var target = lobbyPosition(player);
+        player.teleportTo(player.level().getServer().overworld(), target.x, target.y, target.z, Set.of(), spawn.yaw, spawn.pitch, true);
         player.setGameMode(spectator ? GameType.SPECTATOR : GameType.ADVENTURE);
+        Teleports.clearSupport(player);
         protect(player, true);
+    }
+
+    /** Spread across supported positions with empty standing space. */
+    private net.minecraft.world.phys.Vec3 lobbyPosition(ServerPlayer player) {
+        var level = player.level().getServer().overworld();
+        var center = new net.minecraft.world.phys.Vec3(spawn.x, spawn.y, spawn.z);
+        for (int radius = 0; radius <= 3; radius++) {
+            for (int x = -radius; x <= radius; x++) for (int z = -radius; z <= radius; z++) {
+                if (Math.max(Math.abs(x), Math.abs(z)) != radius) continue;
+                var target = center.add(x, 0, z);
+                if (!hasSupport(level, target.x, target.y, target.z)) continue;
+                var box = player.getBoundingBox().move(target.subtract(player.position()));
+                if (!level.noCollision(player, box)) continue;
+                boolean occupied = level.getServer().getPlayerList().getPlayers().stream().anyMatch(other ->
+                        other != player && other.level() == level && other.position().distanceToSqr(target) < 0.81);
+                if (!occupied) return target;
+            }
+        }
+        return center;
+    }
+
+    private static boolean hasSupport(ServerLevel level, double x, double y, double z) {
+        var below = BlockPos.containing(x, y - 0.01, z);
+        var feet = new net.minecraft.world.phys.AABB(x - 0.3, y - 0.01, z - 0.3, x + 0.3, y, z + 0.3);
+        var shape = level.getBlockState(below).getCollisionShape(level, below).move(below.getX(), below.getY(), below.getZ());
+        return net.minecraft.world.phys.shapes.Shapes.joinIsNotEmpty(shape,
+                net.minecraft.world.phys.shapes.Shapes.create(feet), net.minecraft.world.phys.shapes.BooleanOp.AND);
     }
 
     private void protect(ServerPlayer player, boolean protect) {

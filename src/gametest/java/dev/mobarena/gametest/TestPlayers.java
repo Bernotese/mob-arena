@@ -14,7 +14,7 @@ public final class TestPlayers {
     private TestPlayers() {}
     public static ServerPlayer create(GameTestHelper helper) { return create(helper, player -> {}); }
     public static ServerPlayer create(GameTestHelper helper, java.util.function.Consumer<ServerPlayer> beforeJoin) {
-        return create(helper, beforeJoin, null, null);
+        return create(helper, UUID.randomUUID(), beforeJoin, null, null);
     }
     /** Test player that also records its chat (system) messages into {@code messages}. */
     public static ServerPlayer recording(GameTestHelper helper, java.util.List<String> messages) {
@@ -23,12 +23,17 @@ public final class TestPlayers {
     /** Records packets sent to the embedded client, with optional system messages. */
     public static ServerPlayer recording(GameTestHelper helper, java.util.List<String> messages,
                                          java.util.List<net.minecraft.network.protocol.Packet<?>> packets) {
-        return create(helper, player -> {}, messages, packets);
+        return create(helper, UUID.randomUUID(), player -> {}, messages, packets);
     }
-    private static ServerPlayer create(GameTestHelper helper, java.util.function.Consumer<ServerPlayer> beforeJoin,
+    public static ServerPlayer create(GameTestHelper helper, UUID id, java.util.function.Consumer<ServerPlayer> beforeJoin) {
+        return create(helper, id, beforeJoin, null, null);
+    }
+    public static ServerPlayer recordingPackets(GameTestHelper helper, java.util.List<Object> packets) {
+        return create(helper, UUID.randomUUID(), player -> {}, null, packets);
+    }
+    private static ServerPlayer create(GameTestHelper helper, UUID id, java.util.function.Consumer<ServerPlayer> beforeJoin,
                                        java.util.List<String> messages,
-                                       java.util.List<net.minecraft.network.protocol.Packet<?>> packets) {
-        UUID id = UUID.randomUUID();
+                                       java.util.List<? super net.minecraft.network.protocol.Packet<?>> packets) {
         GameProfile profile = new GameProfile(id, "test_" + id.toString().substring(0, 8));
         var cookie = CommonListenerCookie.createInitial(profile, false);
         var server = helper.getLevel().getServer();

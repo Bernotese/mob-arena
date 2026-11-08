@@ -130,6 +130,13 @@ public class SoundGameTest {
         sequence.thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.END, "Game ends"))
             .thenExecute(f.check(() -> {
                 red.addAll(drain(f, f.red)); blue.addAll(drain(f, f.blue));
+                exactly(h, red, GameSound.FINISHED);
+                h.assertTrue(blue.stream().noneMatch(p -> matches(p, GameSound.LOSE)), "Result sound waits for the title");
+                exactly(h, drain(f, lobby));
+            }))
+            .thenWaitUntil(() -> h.assertTrue(f.ctx.timer().elapsedTicks() >= 40, "Result title delay expires"))
+            .thenExecute(f.check(() -> {
+                red.addAll(drain(f, f.red)); blue.addAll(drain(f, f.blue));
                 exactly(h, red, GameSound.FINISHED, GameSound.WIN);
                 h.assertTrue(blue.stream().filter(p -> matches(p, GameSound.LOSE)).count() == 1, "Loser receives one defeat cue");
                 exactly(h, drain(f, lobby), GameSound.DRAW);
@@ -147,6 +154,10 @@ public class SoundGameTest {
                 for (var player : f.players) drain(f, player);
                 f.game.endPhaseNow();
                 h.assertTrue(f.game.phase() == Phase.END, "Admin skip enters END without a verdict");
+                for (var player : List.of(f.red, f.blue, lobby)) exactly(h, drain(f, player));
+            }))
+            .thenWaitUntil(() -> h.assertTrue(f.ctx.timer().elapsedTicks() >= 40, "Admin title delay expires"))
+            .thenExecute(f.check(() -> {
                 for (var player : List.of(f.red, f.blue, lobby)) exactly(h, drain(f, player));
                 f.game.stop();
                 for (var player : List.of(f.red, f.blue, lobby)) exactly(h, drain(f, player));
@@ -183,6 +194,8 @@ public class SoundGameTest {
                 }
             }))
             .thenWaitUntil(() -> h.assertTrue(f.game.phase() == Phase.END, "Empty sudden death ends in a draw"))
+            .thenExecute(f.check(() -> exactly(h, drain(f, lobby))))
+            .thenWaitUntil(() -> h.assertTrue(f.ctx.timer().elapsedTicks() >= 40, "Draw title delay expires"))
             .thenExecute(f.check(() -> {
                 red.addAll(drain(f, f.red)); blue.addAll(drain(f, f.blue));
                 for (var packets : List.of(red, blue)) exactly(h, packets, GameSound.SUDDEN_DEATH,

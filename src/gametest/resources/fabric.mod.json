@@ -30,7 +30,10 @@
       "dev.mobarena.gametest.ResultGameTest",
       "dev.mobarena.gametest.FullResultTest",
       "dev.mobarena.arena.SuddenDeathGameTest",
-      "dev.mobarena.gametest.SoundGameTest"
+      "dev.mobarena.gametest.SoundGameTest",
+      "dev.mobarena.gametest.DeathScreenGameTest",
+      "dev.mobarena.gametest.PolishGameTest",
+      "dev.mobarena.arena.TeleportCollisionGameTest"
     ]
   },
   "depends": {
