@@ -70,7 +70,16 @@ public class PolishGameTest {
                 h.assertTrue(player.level().noCollision(player, player.getBoundingBox()), "Lobby position has enough space");
             }
             lobby.setSpawn(f.red);
-            var hole = f.red.blockPosition().below();
+            // Keep the saved spawn supported so prepare does not rebuild the platform.
+            // Occupy the center and remove the first spread candidate instead.
+            f.redMate.teleportTo(f.red.getX() + 20, f.red.getY(), f.red.getZ());
+            f.blueMate.teleportTo(f.red.getX() + 22, f.red.getY(), f.red.getZ());
+            f.blue.teleportTo(f.red.getX(), f.red.getY(), f.red.getZ());
+            var hole = f.red.blockPosition().below().offset(-1, 0, -1);
+            var holePosition = Vec3.atBottomCenterOf(hole.above());
+            h.assertTrue(f.server.getPlayerList().getPlayers().stream().noneMatch(player ->
+                    player.level() == f.server.overworld() && player.position().distanceToSqr(holePosition) < 0.81),
+                    "The first spread candidate is unoccupied before removing its floor");
             var old = f.server.overworld().getBlockState(hole);
             f.server.overworld().setBlockAndUpdate(hole, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
             try {
