@@ -149,7 +149,10 @@ public class DeathScreenGameTest {
         f.h.assertTrue(p.level() == f.server.overworld(), "Player reaches lobby overworld");
         var json = com.google.gson.JsonParser.parseString(readLobby()).getAsJsonObject().getAsJsonObject("spawn");
         var spawn = new Vec3(json.get("x").getAsDouble(), json.get("y").getAsDouble(), json.get("z").getAsDouble());
-        f.h.assertTrue(p.position().distanceTo(spawn) < 2, "Player reaches lobby platform");
+        f.h.assertTrue(Math.abs(p.getX() - spawn.x) <= 3 && Math.abs(p.getZ() - spawn.z) <= 3
+                && Math.abs(p.getY() - spawn.y) < 0.001, "Player reaches the lobby spread area");
+        f.h.assertTrue(p.verticalCollisionBelow && p.level().noCollision(p, p.getBoundingBox()),
+                "Lobby return has safe floor support and standing space");
     }
     private static String readLobby() {
         try { return java.nio.file.Files.readString(net.fabricmc.loader.api.FabricLoader.getInstance()

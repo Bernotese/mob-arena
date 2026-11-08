@@ -99,6 +99,44 @@ public class LobbyGameTest {
     }
 
     @GameTest
+    public void savedCustomLobbyOnBottomSlabOverAirStaysUnchanged(GameTestHelper helper) throws Exception {
+        var player = TestPlayers.create(helper);
+        var server = helper.getLevel().getServer();
+        var level = server.overworld();
+        Path path = Files.createTempDirectory("mobarena-slab-lobby-test").resolve("lobby.json");
+        try {
+            var floor = helper.absolutePos(new net.minecraft.core.BlockPos(2, 100, 2));
+            var slab = net.minecraft.world.level.block.Blocks.STONE_SLAB.defaultBlockState()
+                    .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.SLAB_TYPE,
+                            net.minecraft.world.level.block.state.properties.SlabType.BOTTOM);
+            level.setBlockAndUpdate(floor.below(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+            level.setBlockAndUpdate(floor, slab);
+            level.setBlockAndUpdate(floor.above(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+            level.setBlockAndUpdate(floor.above(2), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+            player.teleportTo(level, floor.getX() + 0.5, floor.getY() + 0.5, floor.getZ() + 0.5, Set.of(), 35, 12, true);
+            new LobbyManager(path).setSpawn(player);
+            String saved = Files.readString(path);
+            var loaded = new LobbyManager(path);
+            loaded.prepare(server);
+            helper.assertValueEqual(level.getBlockState(floor), slab, "Preparing a custom slab spawn preserves its bottom slab");
+            helper.assertTrue(level.getBlockState(floor.below()).isAir(), "Preparing a custom slab spawn preserves the air below");
+            helper.assertValueEqual(Files.readString(path), saved, "Preparing a custom slab spawn keeps its saved data");
+            loaded.sendToLobby(player, false);
+            helper.assertTrue(Math.abs(player.getY() - floor.getY() - 0.5) < 0.001, "Lobby return keeps the half-block spawn height");
+            player.hasChangedDimension();
+            player.connection.handleAcceptPlayerLoad(new net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket());
+            player.teleportTo(player.getX(), player.getY() + 1, player.getZ());
+            player.move(net.minecraft.world.entity.MoverType.PLAYER, new net.minecraft.world.phys.Vec3(0, -2, 0));
+            helper.assertTrue(player.onGround() && Math.abs(player.getY() - floor.getY() - 0.5) < 0.001,
+                    "Player lands safely on the preserved bottom slab");
+            helper.succeed();
+        } finally {
+            server.getPlayerList().remove(player); player.discard();
+            Files.deleteIfExists(path); Files.deleteIfExists(path.getParent());
+        }
+    }
+
+    @GameTest
     public void shutdownClearsOnlinePlayersAndSavesOfflineCleanup(GameTestHelper helper) throws Exception {
         ServerPlayer red = TestPlayers.create(helper), blue = TestPlayers.create(helper);
         var server = helper.getLevel().getServer();

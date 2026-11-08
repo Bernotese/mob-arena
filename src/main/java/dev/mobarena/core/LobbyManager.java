@@ -115,7 +115,7 @@ public final class LobbyManager implements PhaseListener {
             BlockPos pos = server.overworld().getRespawnData().pos();
             spawn = new Spawn(pos.getX() + 0.5, Math.max(pos.getY(), 80) + 3, pos.getZ() + 0.5, 0, 0);
             buildPlatform(server.overworld()); save();
-        } else if (server.overworld().getBlockState(BlockPos.containing(spawn.x, spawn.y - 1, spawn.z)).isAir()) {
+        } else if (server.overworld().getBlockState(BlockPos.containing(spawn.x, spawn.y - 0.01, spawn.z)).isAir()) {
             buildPlatform(server.overworld());
         }
     }
