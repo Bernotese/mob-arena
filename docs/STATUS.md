@@ -1,7 +1,14 @@
-# Status (2026-11-08)
+# Status (2026-11-08, after T13)
 
-## Version 1 plus real-client fixes (T12) on main
-All tasks T0–T12 are merged. `main` build: 108 unit tests, 144 GameTests. CI on GitHub runs the same build.
+## Version 1 plus real-client fixes (T12, T13) on main
+All tasks T0–T13 are merged. `main` build: 112 unit tests, 155 GameTests. CI on GitHub runs the same build.
+
+T13 (second real-client test, docs/findings/2026-11-08-rerun-tasks.md, plan docs/plans/T13.md):
+- New arena prep phase: teams get arenaPrepSeconds (default 30) in their arena before the wave 1 countdown. No elimination in prep.
+- Bug fix (High): a player who rejoins in ARENA is no longer registered in two levels (no stuck player after the game).
+- Selected wave tab icon is an emerald block with glint.
+- "standing on air": not reproducible on the server; with -Dmobarena.debug=true the server logs MOBARENA_STANDING_ON_AIR lines.
+- Debug switch -Dmobarena.debug.keepEffects=true keeps effects at sudden death start.
 
 T12 (from the real-client test, docs/findings/2026-11-08-real-client.md, plan docs/plans/T12.md):
 - Bug 1: a player on the death screen is respawned at each phase change, at game end and at join. No false ALL_DOWN.
@@ -13,9 +20,8 @@ T12 (from the real-client test, docs/findings/2026-11-08-real-client.md, plan do
 - Sounds (vanilla, Master source): countdown, Go, wave clear, finish, elimination, sudden death, win/lose/draw.
 
 ## Open
-- User: second real-client test (VM). Check: death screen across phase change and rejoin while dead, Go title, backpack Q, wave tab mark, sounds (loudness), "standing on air" log, lobby spread.
-- Bug 2 cause of the End platform respawn is not proven (old main already sent normal End deaths to the overworld). Watch for it in the rerun.
-- Not tested yet: 2 viewers in the wave menu at the same time, backpack into a chest, S15 load, server stop during ARENA.
+- User: third real-client test (VM). Check: rejoin in ARENA after a PREP disconnect (one entity, lobby after the game), arena prep phase (30 s, "Get ready", first "3" heard), wave tab icon. Run with -Dmobarena.debug=true and send the MOBARENA_STANDING_ON_AIR lines.
+- Not tested yet: backpack into a chest, S15 load.
 - Possible later: T11 features (mob variants, stats screen).
 
 ## Rules and defaults
