@@ -6,7 +6,7 @@ import java.util.*;
 
 /** One tick call advances time by one tick after arena readiness. */
 public final class BattleFlow {
-    public enum State { WAITING_ARENA, COUNTDOWN, FIGHT, COOLDOWN, FINISHED, ELIMINATED }
+    public enum State { WAITING_ARENA, PREP, COUNTDOWN, FIGHT, COOLDOWN, FINISHED, ELIMINATED }
     private final BattleScript script;
     private State state = State.WAITING_ARENA;
     private int wave, stateTicks, cleared, kills;
@@ -23,16 +23,27 @@ public final class BattleFlow {
         Objects.requireNonNull(in);
         if (state == State.FINISHED || state == State.ELIMINATED) return List.of();
         var events = new ArrayList<BattleEvent>();
-        if (state != State.WAITING_ARENA) {
+        if (state != State.WAITING_ARENA && state != State.PREP) {
             elapsed++;
             stateTicks++;
         }
         if (state == State.WAITING_ARENA) {
             if (!in.arenaReady()) return List.of();
             wave = 1;
+            stateTicks = 0;
+            if (script.prepTicks() > 0) {
+                state = State.PREP;
+                return List.of(new BattleEvent.Prep((script.prepTicks() + 19) / 20));
+            }
             state = State.COUNTDOWN;
             events.add(new BattleEvent.Countdown(1, (script.countdownTicks() + 19) / 20));
             return List.copyOf(events);
+        }
+        if (state == State.PREP) {
+            if (++stateTicks < script.prepTicks()) return List.of();
+            state = State.COUNTDOWN;
+            stateTicks = 0;
+            return List.of(new BattleEvent.Countdown(1, (script.countdownTicks() + 19) / 20));
         }
         if (state == State.FIGHT) kills = in.killsInWave();
         if (!in.anyOnline() || in.allDown()) {
@@ -57,6 +68,12 @@ public final class BattleFlow {
             else checkGlow(events);
         }
         return List.copyOf(events);
+    }
+
+    public int prepLeftTicks() { return state == State.PREP ? Math.max(0, script.prepTicks() - stateTicks) : 0; }
+    public void setPrepLeft(int ticks) {
+        if (state != State.PREP) throw new IllegalStateException("Battle is not in PREP");
+        stateTicks = script.prepTicks() - Math.clamp(ticks, 0, script.prepTicks());
     }
 
     private void spawn(List<BattleEvent> events) {

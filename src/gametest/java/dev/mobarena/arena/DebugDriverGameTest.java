@@ -28,6 +28,7 @@ public class DebugDriverGameTest {
             try { original = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve("mob-arena.json")); }
             catch (IOException e) { throw new IllegalStateException(e); }
             var config = new MobArenaConfig();
+            config.arenaPrepSeconds = 0;
             config.prepTimeSeconds = 60; config.waveConfigTimeSeconds = 30;
             config.waveCountdownSeconds = 3; config.waveCooldownSeconds = 3;
             config.waveMaxTimeSeconds = 60; config.suddenDeathMaxTimeSeconds = 60;

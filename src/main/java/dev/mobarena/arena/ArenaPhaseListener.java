@@ -25,7 +25,7 @@ public final class ArenaPhaseListener implements PhaseListener {
             List<SortedMap<String, Integer>> waves = plan != null ? plan.waves()
                     : List.of(new TreeMap<>(), new TreeMap<>(), new TreeMap<>());
             var script = new BattleScript(waves, config.waveCountdownSeconds() * 20, config.waveCooldownSeconds() * 20,
-                    config.waveMaxTimeSeconds() * 20, config.mobGlowAfterSeconds() * 20);
+                    config.waveMaxTimeSeconds() * 20, config.mobGlowAfterSeconds() * 20, config.arenaPrepSeconds() * 20);
             group.start(team, () -> Arena.fromWorlds(ctx, team), script, BattleListener.resultHooks(ctx), false);
         }
     }

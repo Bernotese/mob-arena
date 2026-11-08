@@ -89,9 +89,18 @@ public final class DebugDriver {
     public static void timer(int seconds) {
         var ctx = context();
         var phase = GameManager.get().phase();
+        if (seconds < 0) throw new IllegalArgumentException("Seconds must be nonnegative");
+        if (phase == Phase.ARENA) {
+            var group = ArenaBattles.get(ctx);
+            var preparing = group == null ? List.<dev.mobarena.arena.ArenaBattle>of() : group.all().stream()
+                    .filter(battle -> battle.state() == dev.mobarena.arena.BattleFlow.State.PREP).toList();
+            if (!preparing.isEmpty()) {
+                for (var battle : preparing) battle.setPrepLeft((int) Math.min(Integer.MAX_VALUE, seconds * 20L));
+                return;
+            }
+        }
         if (phase == Phase.ARENA || phase == Phase.SUDDEN_DEATH)
             throw new IllegalStateException("The phase timer cannot control arena battles");
-        if (seconds < 0) throw new IllegalArgumentException("Seconds must be nonnegative");
         ctx.timer().reset(seconds * 20L);
     }
     /** Per team: {"arena": outcome, "suddenDeath": outcome or null}; null without a ResultTracker. */
@@ -154,6 +163,7 @@ public final class DebugDriver {
             var group = ArenaBattles.get(ctx); var battle = group == null ? null : group.battle(team);
             var b = new JsonObject();
             if (battle != null) {
+                b.addProperty("prepLeft", battle.prepLeftTicks());
                 b.addProperty("state", battle.state().name()); b.addProperty("tag", battle.currentTag());
                 b.addProperty("alive", battle.waveMobs().size()); b.addProperty("kills", battle.kills());
                 b.add("reason", battle.eliminationReason().<JsonElement>map(r -> new JsonPrimitive(r.name())).orElse(JsonNull.INSTANCE));

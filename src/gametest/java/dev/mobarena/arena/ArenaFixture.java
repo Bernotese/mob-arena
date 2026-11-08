@@ -14,6 +14,7 @@ final class ArenaFixture implements AutoCloseable {
     final GameTestHelper h;
     final ServerPlayer red, blue, mate;
     final GameContext ctx;
+    private final java.util.function.Supplier<dev.mobarena.config.MobArenaConfig> previousConfig;
     final List<String> results = new ArrayList<>();
     final BattleListener recorder = new BattleListener() {
         @Override public void finished(TeamId team, long ticks) { results.add("finished " + team); }
@@ -28,6 +29,12 @@ final class ArenaFixture implements AutoCloseable {
     ArenaFixture(GameTestHelper h, boolean withMate, boolean enterArena, boolean realResults) {
         this.h = h;
         TestEnd.stopStaleGame();
+        previousConfig = game.configSource();
+        game.setConfigSource(() -> {
+            var config = previousConfig.get().copy();
+            config.arenaPrepSeconds = 0;
+            return config;
+        });
         red = player(h); blue = player(h);
         mate = withMate ? player(h) : null;
         var teams = new HashMap<UUID, TeamId>();
@@ -72,6 +79,7 @@ final class ArenaFixture implements AutoCloseable {
 
     @Override public void close() {
         if (game.context() == ctx) TestEnd.stopStaleGame();
+        game.setConfigSource(previousConfig);
         for (var p : new ServerPlayer[]{red, blue, mate}) if (p != null && ctx.server().getPlayerList().getPlayer(p.getUUID()) != null)
             ctx.server().getPlayerList().remove(p);
     }

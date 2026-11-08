@@ -29,7 +29,9 @@ final class FullGameFixture implements AutoCloseable {
 
     FullGameFixture(GameTestHelper h, boolean start) { this(h, start, 2); }
 
-    FullGameFixture(GameTestHelper h, boolean start, int perTeam) {
+    FullGameFixture(GameTestHelper h, boolean start, int perTeam) { this(h, start, perTeam, 0); }
+
+    FullGameFixture(GameTestHelper h, boolean start, int perTeam, int arenaPrepSeconds) {
         if (perTeam < 1 || perTeam > 2) throw new IllegalArgumentException("1 or 2 players per team");
         this.h = h; server = h.getLevel().getServer();
         if (active != null) active.close();
@@ -38,6 +40,7 @@ final class FullGameFixture implements AutoCloseable {
         catch (IOException e) { throw new IllegalStateException(e); }
         TestEnd.run(h, this::close);
         var config = new MobArenaConfig();
+        config.arenaPrepSeconds = arenaPrepSeconds;
         config.prepTimeSeconds = 60; config.waveConfigTimeSeconds = 30;
         config.waveCountdownSeconds = 3; config.waveCooldownSeconds = 3;
         config.waveMaxTimeSeconds = 60;
