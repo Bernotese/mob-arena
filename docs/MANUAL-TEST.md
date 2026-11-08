@@ -32,6 +32,7 @@ Send these commands as an operator in the lobby. The values apply at the next ph
 ```
 /ma config set prepTimeSeconds 300
 /ma config set waveConfigTimeSeconds 60
+/ma config set arenaPrepSeconds 10
 /ma config set waveCountdownSeconds 3
 /ma config set waveCooldownSeconds 5
 /ma config set waveMaxTimeSeconds 120
@@ -72,7 +73,7 @@ Mark each item. Write the problem and the time if an item fails.
 **HUD and sound**
 - [ ] Titles: countdown numbers and "Go" before each wave; the result title at game end.
 - [ ] Boss bar: correct text, color and progress in each phase (`PREP`, `WAVE_CONFIG`, `ARENA`, `SUDDEN_DEATH`, `END`). Each team sees only its own bar. Lobby players see a neutral bar.
-- [ ] Sounds: the mod plays no own sounds (SPEC has none). At game end, fireworks fly over the winner team, with the vanilla firework sound.
+- [ ] Sounds: a sound for each countdown number, "Go", wave cleared, eliminated, sudden death, and the result. At game end, fireworks fly over the winner team, with the vanilla firework sound.
 
 **Menus**
 - [ ] Wave menu: all clicks (left, shift+left, right) move the correct count. The counts change for all team viewers at once.
@@ -82,15 +83,21 @@ Mark each item. Write the problem and the time if an item fails.
 - [ ] Backpack: you cannot drop it, put it in a chest, or put it into the backpack.
 
 **Arena**
+- [ ] Preparation: at arena start, each team is at its spawn. The boss bar shows "Get ready – 0:10" and counts down. No mobs spawn.
+- [ ] After the preparation, the countdown shows all numbers, also the first "3" (each with a sound). Then "Go" and wave 1.
+- [ ] Die during the preparation (for example, fall into lava). The team is not eliminated. At the end of the preparation, you respawn at the team spawn.
+- [ ] Leave during the preparation and join again before it ends. You are at the team spawn, without a respawn timer.
+- [ ] The wave 1 boss bar starts with the full wave time (the preparation did not use wave time).
 - [ ] Mobs glow after `mobGlowAfterSeconds`.
 - [ ] A dead player is a spectator, then respawns at the team spawn after `arenaRespawnSeconds`.
 - [ ] An eliminated team watches the other arena in spectator mode.
 - [ ] Sudden death (both teams finish or both are eliminated with equal progress): all players are alive at their spawn; the chat message shows.
+- [ ] Sudden death starts without a preparation. After an elimination, the spectators go back to their arena: check that they see the first countdown number "3". If not, write it in the report.
 
 **Worlds**
 - [ ] Randomizer: break the same block type in RED and in BLUE. The drops are different. Player drops are not changed.
 - [ ] Nether portal and End portal: each team goes only to its own Nether and End, never to the other team or the vanilla worlds.
-- [ ] Rejoin: leave in `PREP` and join again. You are at the same position. Leave in `ARENA` and join again. You get the respawn timer.
+- [ ] Rejoin: leave in `PREP` and join again. You are at the same position. Leave in `ARENA` (after the preparation) and join again. You get the respawn timer.
 
 **More players**
 - [ ] If possible, test with 2 players per team: shared backpack, shared wave menu, respawn while the team mate is alive.
