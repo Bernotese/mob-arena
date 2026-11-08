@@ -62,6 +62,53 @@ public class DebugDriverGameTest {
         }
     }
 
+    @GameTest(environment = "mobarena:debug_keep_effects", maxTicks = 400)
+    public void keepEffectsRequiresBothDebugProperties(GameTestHelper h) {
+        String debug = System.getProperty("mobarena.debug");
+        String keep = System.getProperty("mobarena.debug.keepEffects");
+        dev.mobarena.gametest.TestEnd.run(h, () -> {
+            restoreProperty("mobarena.debug", debug);
+            restoreProperty("mobarena.debug.keepEffects", keep);
+        });
+        System.setProperty("mobarena.debug", "true");
+        System.setProperty("mobarena.debug.keepEffects", "true");
+        var f = new Fixture(h);
+        var a = f.arena;
+        try {
+            f.command("ma debug pool add RED minecraft:cow 3");
+            f.command("ma debug pool add BLUE minecraft:cow 3");
+            a.game.endPhaseNow();
+            f.command("ma debug waves RED cow:1 cow:1 cow:1");
+            f.command("ma debug waves BLUE cow:1 cow:1 cow:1");
+            a.red.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SPEED, 2400, 1));
+            a.game.endPhaseNow();
+            h.startSequence().thenWaitUntil(() -> h.assertTrue(a.red.level() == a.ctx.arenaLevel(TeamId.RED),
+                    "Player enters the real arena"))
+                .thenExecute(f.check(() -> {
+                    h.assertTrue(a.red.hasEffect(net.minecraft.world.effect.MobEffects.SPEED), "Arena entry preserves the test effect");
+                    System.clearProperty("mobarena.debug.keepEffects");
+                    a.group().resetPlayers();
+                    h.assertTrue(a.red.getActiveEffects().isEmpty(), "Default reset still clears effects");
+                    System.setProperty("mobarena.debug.keepEffects", "true");
+                    System.setProperty("mobarena.debug", "false");
+                    a.red.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SPEED, 2400));
+                    a.group().resetPlayers();
+                    h.assertTrue(a.red.getActiveEffects().isEmpty(), "Keep-effects property has no effect without debug mode");
+                    System.setProperty("mobarena.debug", "true");
+                    a.red.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SPEED, 2400, 1));
+                    a.game.enterSuddenDeath();
+                    h.assertTrue(a.game.phase() == Phase.SUDDEN_DEATH, "Real sudden death starts");
+                    var effect = a.red.getEffect(net.minecraft.world.effect.MobEffects.SPEED);
+                    h.assertTrue(effect != null && effect.getAmplifier() == 1, "Debug sudden death preserves the potion effect");
+                })).thenExecute(f::close).thenSucceed();
+        } catch (RuntimeException | Error e) { f.close(); throw e; }
+    }
+
+    private static void restoreProperty(String name, String value) {
+        if (value == null) System.clearProperty(name);
+        else System.setProperty(name, value);
+    }
+
     @GameTest(environment = "mobarena:debug_actions", maxTicks = 700)
     public void killDownAndClearwaveUseRealEventsAndDrainTheQueue(GameTestHelper h) {
         var f = new Fixture(h);

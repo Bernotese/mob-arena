@@ -22,6 +22,8 @@ public final class DebugDriver {
     public static final int MAX_COUNT = 10_000;
     private DebugDriver() {}
     public static boolean enabled() { return Boolean.getBoolean("mobarena.debug"); }
+    /** Test-only effect retention; ignored unless the debug driver is enabled. */
+    public static boolean keepEffects() { return enabled() && Boolean.getBoolean("mobarena.debug.keepEffects"); }
     private static void check() {
         if (!enabled()) throw new IllegalStateException("Set -Dmobarena.debug=true to use the debug driver");
     }

@@ -119,10 +119,10 @@ public final class ArenaBattles implements AutoCloseable {
         spectate(player, other != null && other.arena().isPresent() ? other.arena().get() : battle.arena().get());
     }
 
-    /** Sudden death start: every online team player alive at the own spawn, no effects (T8 Q1). */
+    /** Sudden death start: reset online team players; debug tests can keep effects. */
     void resetPlayers() {
         for (var battle : all()) for (ServerPlayer player : onlinePlayers(battle.team)) {
-            player.removeAllEffects();
+            if (!dev.mobarena.debug.DebugDriver.keepEffects()) player.removeAllEffects();
             // Arena not loaded yet: onReady places the player.
             if (battle.loadArena().isPresent()) battle.placeAtSpawn(player);
         }
